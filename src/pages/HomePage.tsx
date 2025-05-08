@@ -3,10 +3,10 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import SearchBar from "@/components/ui/SearchBar";
 import CategoryCard from "@/components/ui/CategoryCard";
-import FeaturedTalents from "@/components/ui/FeaturedTalents";
 import { auth, talent, Talent, SearchResponse } from "@/lib/api";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 interface Category {
   id: number;
@@ -15,15 +15,18 @@ interface Category {
   description: string;
 }
 
+// Updated categories list
 const categories: Category[] = [
-  { id: 1, name: "DANCER", icon: "💃", description: "Professional dancers and performers" },
-  { id: 2, name: "MUSICIAN", icon: "🎵", description: "Musicians and music teachers" },
-  { id: 3, name: "PHOTOGRAPHER", icon: "📸", description: "Photography professionals" },
-  { id: 4, name: "VIDEOGRAPHER", icon: "🎥", description: "Video production experts" },
-  { id: 5, name: "EVENT_PLANNER", icon: "🎉", description: "Event planning specialists" },
-  { id: 6, name: "MAKEUP_ARTIST", icon: "💄", description: "Makeup and beauty artists" },
-  { id: 7, name: "DESIGNER", icon: "🎨", description: "Graphic and fashion designers" },
-  { id: 8, name: "COACH", icon: "🏆", description: "Sports and fitness coaches" }
+  { id: 1, name: "Musician", icon: "🎵", description: "Find talented musicians" },
+  { id: 2, name: "Actor/Actress", icon: "🎭", description: "Discover actors and actresses" },
+  { id: 3, name: "Dancer", icon: "💃", description: "Explore skilled dancers" },
+  { id: 4, name: "Visual Artist", icon: "🎨", description: "Connect with visual artists" },
+  { id: 5, name: "Comedian", icon: "🎤", description: "Hire hilarious comedians" },
+  { id: 6, name: "Model", icon: "🧍", description: "Book professional models" },
+  { id: 7, name: "Photographer", icon: "📸", description: "Find skilled photographers" },
+  { id: 8, name: "Writer", icon: "✍️", description: "Collaborate with writers" },
+  { id: 9, name: "Chef", icon: "🧑‍🍳", description: "Engage culinary experts" },
+  { id: 10, name: "Other", icon: "🌟", description: "Explore various other talents" }
 ];
 
 const HomePage = () => {
@@ -142,19 +145,32 @@ const HomePage = () => {
               <h3 className="text-xl font-semibold mb-4">Search Results</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {searchResults.map((talent) => (
-                  <div key={talent.id} className="bg-gray-50 p-6 rounded-lg shadow border border-gray-100">
+                  <div key={talent.id} className="bg-white border border-gray-200 rounded-lg shadow-md overflow-hidden flex flex-col">
+                    <div className="p-5">
                     <div className="flex items-center mb-4">
-                      <div className="h-12 w-12 rounded-full bg-rwanda-green text-white flex items-center justify-center font-bold text-xl">
-                        {talent.fullName.charAt(0)}
+                        <Avatar className="h-12 w-12 rounded-full">
+                          <AvatarImage src={talent.photoUrl} alt={talent.fullName} />
+                          <AvatarFallback className="bg-rwanda-green text-white">
+                            {talent.fullName ? talent.fullName.charAt(0).toUpperCase() : 'T'}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="ml-4">
+                          <h4 className="font-semibold text-lg text-gray-800">{talent.fullName}</h4>
+                          <p className="text-sm text-rwanda-blue">{talent.category ? talent.category.replace('_', ' ') : 'Talent'}</p>
+                        </div>
                       </div>
-                      <div className="ml-4">
-                        <h4 className="font-medium">{talent.fullName}</h4>
-                        <p className="text-sm text-gray-600">{talent.category}</p>
+                      {talent.bio && <p className="text-sm text-gray-600 mb-3 line-clamp-2">{talent.bio}</p>}
+                      {talent.location && <p className="text-xs text-gray-500 mb-1"><span className="font-medium">Location:</span> {talent.location}</p>}
+                      {talent.serviceAndPricing && <p className="text-xs text-gray-500"><span className="font-medium">Services:</span> {talent.serviceAndPricing.substring(0,50)}...</p>}
                       </div>
+                    <div className="mt-auto p-4 bg-gray-50 border-t border-gray-200">
+                       <Button 
+                        className="w-full bg-rwanda-green hover:bg-rwanda-green/90"
+                        onClick={() => navigate(`/book/${talent.id}`)}
+                       >
+                         Book Talent
+                       </Button>
                     </div>
-                    <p className="text-gray-600 mb-2">{talent.bio}</p>
-                    <p className="text-sm text-gray-500">{talent.location}</p>
-                    <p className="text-sm font-medium text-rwanda-green mt-2">{talent.serviceAndPricing}</p>
                   </div>
                 ))}
               </div>
@@ -193,18 +209,33 @@ const HomePage = () => {
               )}
               {categoryTalents[category.name] && (
                 <div className="mt-4 grid grid-cols-1 gap-4">
-                  {categoryTalents[category.name].map((talent) => (
-                    <div key={talent.id} className="bg-gray-50 p-4 rounded-lg shadow border border-gray-100">
+                  {categoryTalents[category.name].slice(0, 3).map((talent) => (
+                    <div key={talent.id} className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden flex flex-col">
+                      <div className="p-3">
                       <div className="flex items-center mb-2">
-                        <div className="h-8 w-8 rounded-full bg-rwanda-green text-white flex items-center justify-center font-bold text-sm">
-                          {talent.fullName.charAt(0)}
+                          <Avatar className="h-10 w-10 rounded-full">
+                            <AvatarImage src={talent.photoUrl} alt={talent.fullName} />
+                            <AvatarFallback className="bg-rwanda-blue text-white text-xs">
+                              {talent.fullName ? talent.fullName.charAt(0).toUpperCase() : 'T'}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="ml-3">
+                            <h4 className="font-medium text-sm text-gray-800">{talent.fullName}</h4>
+                            <p className="text-xs text-gray-500">{talent.location || "Rwanda"}</p>
+                          </div>
                         </div>
-                        <div className="ml-2">
-                          <h4 className="font-medium text-sm">{talent.fullName}</h4>
-                          <p className="text-xs text-gray-600">{talent.location}</p>
+                        {/* <p className="text-xs text-gray-600 line-clamp-2 mb-2">{talent.bio || "No bio available."}</p> */}
                         </div>
+                      <div className="mt-auto p-2 bg-gray-50 border-t border-gray-100">
+                        <Button 
+                          variant="outline"
+                          size="sm"
+                          className="w-full border-rwanda-green text-rwanda-green hover:bg-rwanda-green/10 hover:text-rwanda-green"
+                          onClick={() => navigate(`/book/${talent.id}`)}
+                        >
+                          Book
+                        </Button>
                       </div>
-                      <p className="text-xs text-gray-600">{talent.serviceAndPricing}</p>
                     </div>
                   ))}
                 </div>
@@ -213,9 +244,6 @@ const HomePage = () => {
           ))}
         </div>
       </section>
-
-      {/* Featured Talents */}
-      <FeaturedTalents />
 
       {/* Call To Action */}
       <section className="bg-rwanda-blue/90 text-white py-16 px-4">

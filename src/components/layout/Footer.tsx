@@ -47,7 +47,7 @@ const Footer = () => {
             <div className="space-y-2">
               <p className="text-gray-600">KN 5 Rd, Kigali, Rwanda</p>
               <p className="text-gray-600">info@rwalent.com</p>
-              <p className="text-gray-600">+250 78 123 4567</p>
+              <p className="text-gray-600">+250 78 856 7540</p>
             </div>
             
             {/* Social Media Links */}

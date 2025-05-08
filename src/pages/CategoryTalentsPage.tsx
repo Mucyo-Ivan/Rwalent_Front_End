@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { talent, Talent } from "@/lib/api";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, ArrowLeft } from "lucide-react";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 const CategoryTalentsPage = () => {
   const { category } = useParams<{ category: string }>();
@@ -86,31 +87,48 @@ const CategoryTalentsPage = () => {
           {talents.map((talent) => (
             <div
               key={talent.id}
-              className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow"
+              className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow flex flex-col justify-between"
             >
-              <div className="flex items-center mb-4">
-                <div className="h-16 w-16 rounded-full bg-rwanda-green text-white flex items-center justify-center font-bold text-2xl">
-                  {talent.fullName.charAt(0)}
+              <div>
+                <div className="flex items-center mb-4">
+                  <Avatar className="h-16 w-16 text-xl">
+                    <AvatarImage src={talent.photoUrl || undefined} alt={talent.fullName} />
+                    <AvatarFallback className="bg-rwanda-green text-white">
+                      {talent.fullName?.split(' ').map(n => n[0]).join('').toUpperCase() || talent.fullName?.charAt(0) || 'T'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="ml-4">
+                    <h3 className="text-xl font-semibold">{talent.fullName}</h3>
+                    <p className="text-gray-600 text-sm">{talent.location || "Location not specified"}</p>
+                  </div>
                 </div>
-                <div className="ml-4">
-                  <h3 className="text-xl font-semibold">{talent.fullName}</h3>
-                  <p className="text-gray-600">{talent.location}</p>
+                
+                <p className="text-gray-700 mb-3 text-sm">{talent.bio || "No bio available."}</p>
+                
+                <div className="space-y-1 text-xs mb-3">
+                  {talent.serviceAndPricing && (
+                    <p className="text-gray-600">
+                      <span className="font-medium">Services:</span> {talent.serviceAndPricing}
+                    </p>
+                  )}
+                  {talent.phoneNumber && (
+                    <p className="text-gray-600">
+                      <span className="font-medium">Contact:</span> {talent.phoneNumber}
+                    </p>
+                  )}
+                  {talent.email && (
+                  <p className="text-gray-600">
+                    <span className="font-medium">Email:</span> {talent.email}
+                  </p>
+                  )}
                 </div>
               </div>
-              
-              <p className="text-gray-700 mb-4">{talent.bio}</p>
-              
-              <div className="space-y-2">
-                <p className="text-sm text-gray-600">
-                  <span className="font-medium">Services:</span> {talent.serviceAndPricing}
-                </p>
-                <p className="text-sm text-gray-600">
-                  <span className="font-medium">Contact:</span> {talent.phoneNumber}
-                </p>
-                <p className="text-sm text-gray-600">
-                  <span className="font-medium">Email:</span> {talent.email}
-                </p>
-              </div>
+              <Button 
+                onClick={() => navigate(`/book/${talent.id}`)}
+                className="w-full mt-auto bg-rwanda-green hover:bg-rwanda-green/90 text-white"
+              >
+                Book Talent
+              </Button>
             </div>
           ))}
         </div>

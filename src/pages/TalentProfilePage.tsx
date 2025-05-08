@@ -1,159 +1,281 @@
-
-import { useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Check, MapPin, Star } from "lucide-react";
-import { talents } from "@/data/mockData";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
+import { Camera, Save } from "lucide-react";
+
+interface TalentProfile {
+  fullName: string;
+  email: string;
+  phoneNumber: string;
+  category: string;
+  location: string;
+  bio: string;
+  serviceAndPricing: string;
+  profileImage: string | null;
+  portfolioImages: string[];
+}
 
 const TalentProfilePage = () => {
-  const { id } = useParams<{ id: string }>();
-  const talent = talents.find((t) => t.id === id);
-  const [activeTab, setActiveTab] = useState("about");
+  const { userProfile } = useAuth();
+  const [isEditing, setIsEditing] = useState(false);
+  const [profile, setProfile] = useState<TalentProfile>({
+    fullName: "",
+    email: "",
+    phoneNumber: "",
+    category: "",
+    location: "",
+    bio: "",
+    serviceAndPricing: "",
+    profileImage: null,
+    portfolioImages: []
+  });
+  const [loading, setLoading] = useState(false);
 
-  if (!talent) {
-    return (
-      <div className="section-padding text-center">
-        <h2 className="text-2xl font-bold mb-4">Talent Not Found</h2>
-        <p className="mb-6">Sorry, we couldn't find the talent you're looking for.</p>
-        <Link to="/talents">
-          <Button>Browse All Talents</Button>
-        </Link>
-      </div>
-    );
-  }
+  useEffect(() => {
+    // In a real app, this would fetch the talent's profile from the API
+    setProfile({
+      fullName: userProfile?.name || "",
+      email: userProfile?.email || "",
+      phoneNumber: "+250 78 123 4567",
+      category: "Photographer",
+      location: "Kigali, Rwanda",
+      bio: "Professional photographer with 5 years of experience in wedding and event photography.",
+      serviceAndPricing: "Wedding Photography: RWF 500,000\nEvent Photography: RWF 300,000",
+      profileImage: null,
+      portfolioImages: []
+    });
+  }, [userProfile]);
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, type: "profile" | "portfolio") => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (type === "profile") {
+          setProfile(prev => ({ ...prev, profileImage: reader.result as string }));
+        } else {
+          setProfile(prev => ({
+            ...prev,
+            portfolioImages: [...prev.portfolioImages, reader.result as string]
+          }));
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSave = async () => {
+    setLoading(true);
+    try {
+      // In a real app, this would save the profile to the API
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      toast.success("Profile updated successfully");
+      setIsEditing(false);
+    } catch (error) {
+      toast.error("Failed to update profile");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="bg-gray-50 min-h-screen">
-      {/* Hero Section with Profile Info */}
-      <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex flex-col md:flex-row gap-8 items-start">
-            {/* Profile Image */}
-            <div className="w-full md:w-64 flex-shrink-0">
-              <div className="rounded-xl overflow-hidden border-4 border-white shadow-lg">
-                <img 
-                  src={talent.profileImage} 
-                  alt={talent.name} 
-                  className="w-full h-64 object-cover"
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold">Profile</h1>
+        <Button
+          onClick={() => setIsEditing(!isEditing)}
+          variant={isEditing ? "default" : "outline"}
+        >
+          {isEditing ? (
+            <>
+              <Save className="h-4 w-4 mr-2" />
+              Save Changes
+            </>
+          ) : (
+            "Edit Profile"
+          )}
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Profile Image Section */}
+        <Card className="md:col-span-1">
+          <CardHeader>
+            <CardTitle>Profile Image</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col items-center space-y-4">
+              <div className="relative">
+                {profile.profileImage ? (
+                  <img
+                    src={profile.profileImage}
+                    alt="Profile"
+                    className="w-48 h-48 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-48 h-48 rounded-full bg-gray-200 flex items-center justify-center">
+                    <span className="text-4xl font-bold text-gray-400">
+                      {profile.fullName.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                )}
+                {isEditing && (
+                  <label className="absolute bottom-0 right-0 bg-white p-2 rounded-full shadow-md cursor-pointer hover:bg-gray-100">
+                    <Camera className="h-5 w-5" />
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept="image/*"
+                      onChange={(e) => handleImageUpload(e, "profile")}
+                    />
+                  </label>
+                )}
+              </div>
+              {isEditing && (
+                <p className="text-sm text-gray-500 text-center">
+                  Click the camera icon to change your profile picture
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Profile Information Section */}
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <CardTitle>Profile Information</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="fullName">Full Name</Label>
+                <Input
+                  id="fullName"
+                  value={profile.fullName}
+                  onChange={(e) => setProfile(prev => ({ ...prev, fullName: e.target.value }))}
+                  disabled={!isEditing}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  value={profile.email}
+                  onChange={(e) => setProfile(prev => ({ ...prev, email: e.target.value }))}
+                  disabled={!isEditing}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phoneNumber">Phone Number</Label>
+                <Input
+                  id="phoneNumber"
+                  value={profile.phoneNumber}
+                  onChange={(e) => setProfile(prev => ({ ...prev, phoneNumber: e.target.value }))}
+                  disabled={!isEditing}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="category">Category</Label>
+                <Select
+                  value={profile.category}
+                  onValueChange={(value) => setProfile(prev => ({ ...prev, category: value }))}
+                  disabled={!isEditing}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Photographer">Photographer</SelectItem>
+                    <SelectItem value="Videographer">Videographer</SelectItem>
+                    <SelectItem value="DJ">DJ</SelectItem>
+                    <SelectItem value="Musician">Musician</SelectItem>
+                    <SelectItem value="Event Planner">Event Planner</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="location">Location</Label>
+                <Input
+                  id="location"
+                  value={profile.location}
+                  onChange={(e) => setProfile(prev => ({ ...prev, location: e.target.value }))}
+                  disabled={!isEditing}
                 />
               </div>
             </div>
-            
-            {/* Profile Info */}
-            <div className="flex-grow">
-              <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-3xl font-bold text-gray-900">{talent.name}</h1>
-                {talent.isVerified && (
-                  <span className="verified-badge">
-                    <Check className="w-3 h-3 mr-1" />
-                    Verified
-                  </span>
-                )}
-              </div>
-              
-              <div className="flex items-center text-gray-600 mb-3">
-                <MapPin className="w-4 h-4 mr-1" />
-                <span>{talent.location}</span>
-                <span className="mx-2">•</span>
-                <span>{talent.category}</span>
-              </div>
-              
-              <div className="flex items-center mb-6">
-                <div className="flex items-center">
-                  <Star className="w-4 h-4 text-rwanda-yellow fill-current" />
-                  <span className="ml-1 text-sm font-medium">{talent.rating}</span>
-                </div>
-                <span className="mx-2 text-gray-500">•</span>
-                <span className="text-sm text-gray-500">{talent.reviewCount} reviews</span>
-              </div>
-              
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Link to={`/booking/${talent.id}`} className="w-full sm:w-auto">
-                  <Button className="btn-primary w-full sm:w-auto">Book This Talent</Button>
-                </Link>
-                <Button variant="outline" className="w-full sm:w-auto">
-                  Contact
-                </Button>
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="bio">Bio</Label>
+              <Textarea
+                id="bio"
+                value={profile.bio}
+                onChange={(e) => setProfile(prev => ({ ...prev, bio: e.target.value }))}
+                disabled={!isEditing}
+                rows={4}
+              />
             </div>
-          </div>
-        </div>
-      </div>
-      
-      {/* Tabs Section */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Tabs defaultValue="about" value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-6">
-            <TabsTrigger value="about">About</TabsTrigger>
-            <TabsTrigger value="services">Services</TabsTrigger>
-            <TabsTrigger value="reviews">Reviews</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="about" className="bg-white p-6 rounded-lg shadow-sm">
-            <h2 className="text-xl font-bold mb-4">About {talent.name}</h2>
-            <p className="text-gray-700 whitespace-pre-line">{talent.bio}</p>
-            <p className="mt-4 text-gray-700">
-              With years of experience in the {talent.category.toLowerCase()} industry, {talent.name.split(" ")[0]} has established a reputation for excellence and professionalism. 
-              Working with clients across Rwanda, {talent.name.split(" ")[0]} brings creativity, skill, and passion to every project.
-            </p>
-          </TabsContent>
-          
-          <TabsContent value="services" className="bg-white p-6 rounded-lg shadow-sm">
-            <h2 className="text-xl font-bold mb-4">Services & Pricing</h2>
-            <div className="space-y-4">
-              {talent.services.map((service) => (
-                <div key={service.id} className="border rounded-lg p-4 hover:shadow-md transition-all">
-                  <div className="flex justify-between items-center mb-2">
-                    <h3 className="font-semibold text-lg">{service.name}</h3>
-                    <span className="text-rwanda-green font-bold">${service.price}</span>
-                  </div>
-                  <p className="text-gray-600">{service.description}</p>
-                  <div className="mt-4">
-                    <Link to={`/booking/${talent.id}`}>
-                      <Button size="sm" className="btn-primary">Book Now</Button>
-                    </Link>
-                  </div>
+            <div className="space-y-2">
+              <Label htmlFor="serviceAndPricing">Services and Pricing</Label>
+              <Textarea
+                id="serviceAndPricing"
+                value={profile.serviceAndPricing}
+                onChange={(e) => setProfile(prev => ({ ...prev, serviceAndPricing: e.target.value }))}
+                disabled={!isEditing}
+                rows={4}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Portfolio Section */}
+        <Card className="md:col-span-3">
+          <CardHeader>
+            <CardTitle>Portfolio Images</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {profile.portfolioImages.map((image, index) => (
+                <div key={index} className="relative aspect-square">
+                  <img
+                    src={image}
+                    alt={`Portfolio ${index + 1}`}
+                    className="w-full h-full object-cover rounded-lg"
+                  />
+                  {isEditing && (
+                    <button
+                      className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600"
+                      onClick={() => setProfile(prev => ({
+                        ...prev,
+                        portfolioImages: prev.portfolioImages.filter((_, i) => i !== index)
+                      }))}
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
               ))}
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="reviews" className="bg-white p-6 rounded-lg shadow-sm">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold">Client Reviews</h2>
-              <div className="flex items-center">
-                <Star className="w-5 h-5 text-rwanda-yellow fill-current" />
-                <span className="ml-1 font-bold">{talent.rating}</span>
-                <span className="ml-2 text-gray-500">({talent.reviewCount} reviews)</span>
-              </div>
-            </div>
-            
-            {talent.reviews.length > 0 ? (
-              <div className="space-y-6">
-                {talent.reviews.map((review) => (
-                  <div key={review.id} className="border-b pb-6 last:border-0">
-                    <div className="flex justify-between items-start mb-2">
-                      <h3 className="font-medium">{review.userName}</h3>
-                      <span className="text-sm text-gray-500">{review.date}</span>
-                    </div>
-                    <div className="flex mb-2">
-                      {[...Array(5)].map((_, i) => (
-                        <Star 
-                          key={i} 
-                          className={`w-4 h-4 ${i < review.rating ? "text-rwanda-yellow fill-current" : "text-gray-300"}`} 
-                        />
-                      ))}
-                    </div>
-                    <p className="text-gray-700">{review.comment}</p>
+              {isEditing && (
+                <label className="aspect-square border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-gray-400">
+                  <div className="text-center">
+                    <Camera className="h-8 w-8 mx-auto text-gray-400" />
+                    <p className="mt-2 text-sm text-gray-500">Add Image</p>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-gray-600">No reviews yet.</p>
-            )}
-          </TabsContent>
-        </Tabs>
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept="image/*"
+                    onChange={(e) => handleImageUpload(e, "portfolio")}
+                  />
+                </label>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

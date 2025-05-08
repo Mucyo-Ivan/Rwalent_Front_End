@@ -25,22 +25,54 @@ const SignInPage = () => {
     setLoading(true);
 
     try {
-      // Attempt to login
       if (email && password) {
-        const response = await auth.login(email, password);
-        await login(email, password); // Update auth context with the response if needed
-        setSuccess("Sign in successful! Redirecting...");
-        toast.success("Welcome back to Rwalent!");
+        const loginResponse = await auth.login(email, password);
         
-        // Redirect after successful login
-        setTimeout(() => {
-          navigate("/");
-        }, 1000);
+        if (loginResponse && loginResponse.token) {
+          localStorage.setItem("token", loginResponse.token);
+          // Call the context's login function. It might internally fetch the profile
+          // or set up the user state based on the token.
+          await login(email, password); 
+          toast.success("Sign in successful! Verifying user type...");
+
+          // Fetch user profile directly here to determine userType for redirection
+          // This ensures immediate redirection logic has the necessary data.
+          const userProfileData = await auth.getProfile(); 
+
+          if (userProfileData) {
+            // The AuthContext might already have the profile, or will fetch it.
+            // If you have a specific setter in AuthContext like `setUserProfile(userProfileData)`, call it here.
+            // For now, we'll rely on userProfileData for immediate redirection.
+            
+            setSuccess("Profile verified! Redirecting...");
+            toast.success(`Welcome back, ${userProfileData.fullName || 'user'}!`);
+
+            setTimeout(() => {
+              if (userProfileData.userType === "TALENT") {
+                navigate("/talent/dashboard");
+              } else {
+                navigate("/home"); // Redirect to the main homepage for other user types
+              }
+            }, 1000);
+          } else {
+            setError("Failed to fetch user profile after login.");
+            toast.error("Could not retrieve user details. Please try again.");
+            localStorage.removeItem("token"); 
+          }
+        } else {
+           setError("Login failed. No token received.");
+           toast.error("Login failed. Please try again.");
+        }
       } else {
         setError("Please enter both email and password.");
       }
     } catch (err) {
-      setError("Invalid credentials. Please try again.");
+      console.error("Sign-in error:", err);
+      const errorMessage = (err instanceof Error && (err as any).response?.data?.message) 
+                           ? (err as any).response.data.message 
+                           : "Invalid credentials or server error. Please try again.";
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
