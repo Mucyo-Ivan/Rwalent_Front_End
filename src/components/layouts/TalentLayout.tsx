@@ -9,11 +9,20 @@ import {
   Bell, 
   Menu,
   X,
-  LogOut
+  ChevronDown
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useNotifications } from "@/contexts/NotificationContext";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 
 interface TalentLayoutProps {
   children: React.ReactNode;
@@ -24,6 +33,7 @@ const TalentLayout = ({ children }: TalentLayoutProps) => {
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const { userProfile } = useAuth();
+  const { unreadCount } = useNotifications();
 
   const navigation = [
     { name: 'Dashboard', href: '/talent/dashboard', icon: LayoutDashboard },
@@ -43,73 +53,79 @@ const TalentLayout = ({ children }: TalentLayoutProps) => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex">
+    <div className="min-h-screen bg-gray-50">
       {/* Sidebar */}
-      <aside
-        className={`fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${
-          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } shadow-lg`}
-      >
+      <aside className={`fixed inset-y-0 left-0 z-30 w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="flex items-center justify-center h-20 border-b border-gray-200 bg-rwanda-green text-white">
-            <Link to="/talent/dashboard" className="text-2xl font-bold">
-              Talent Portal
+          <div className="flex items-center justify-between h-16 px-4 border-b border-gray-200">
+            <Link to="/talent/dashboard" className="flex items-center space-x-2">
+              <span className="text-xl font-bold text-rwanda-green">Rwalent</span>
             </Link>
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 px-4 py-6 space-y-1">
-            {navigation.map((item) => {
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  onClick={() => { if (window.innerWidth < 1024) setIsSidebarOpen(false); }}
-                  className={`flex items-center px-3 py-3 text-sm font-medium rounded-md transition-all duration-150 ease-in-out group ${
-                    isActive(item.href)
-                      ? 'bg-rwanda-green/10 text-rwanda-green shadow-sm'
-                      : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
-                  }`}
-                >
-                  <Icon className={`h-5 w-5 mr-3 ${isActive(item.href) ? 'text-rwanda-green' : 'text-gray-400 group-hover:text-gray-500'}`} />
-                  {item.name}
-                </Link>
-              );
-            })}
+          <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
+            {navigation.map((item) => (
+              <Link
+                key={item.name}
+                to={item.href}
+                className={`flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                  isActive(item.href)
+                    ? 'bg-rwanda-green text-white'
+                    : 'text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                <item.icon className="w-5 h-5 mr-3" />
+                {item.name}
+              </Link>
+            ))}
           </nav>
 
-          {/* User Profile & Logout */}
-          <div className="p-4 border-t border-gray-200 mt-auto">
-            {userProfile ? (
-              <div className="flex items-center space-x-3 mb-4">
-                <Avatar className="h-10 w-10">
-                  <AvatarImage src={userProfile.photoUrl || undefined} alt={userProfile.fullName || "User Avatar"} />
-                  <AvatarFallback>{userProfile.fullName?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 truncate" title={userProfile.fullName}>
-                    {userProfile.fullName}
-                  </p>
-                  <p className="text-xs text-gray-500 truncate" title={userProfile.email}>
-                    {userProfile.email}
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-center space-x-3 mb-4">
-                <Skeleton className="h-10 w-10 rounded-full" />
-                <div className="flex-1 space-y-1.5">
-                  <Skeleton className="h-4 w-3/4" />
-                  <Skeleton className="h-3 w-full" />
-                </div>
-              </div>
-            )}
-            <Button variant="outline" className="w-full group" onClick={handleLogout}>
-              <LogOut className="h-5 w-5 mr-2 text-gray-500 group-hover:text-rwanda-red" />
-              <span className="group-hover:text-rwanda-red">Logout</span>
-            </Button>
+          {/* User Profile Section */}
+          <div className="p-4 border-t border-gray-200">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center w-full space-x-3 p-2 rounded-lg hover:bg-gray-100 transition-colors">
+                  <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
+                    <div className="h-8 w-8 rounded-full bg-white flex items-center justify-center border-2 border-rwanda-green">
+                      <span className="text-rwanda-green font-bold text-xl">
+                        {userProfile?.name.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">
+                      {userProfile?.name}
+                    </p>
+                    <p className="text-xs text-gray-500 truncate">
+                      {userProfile?.email}
+                    </p>
+                  </div>
+                  <ChevronDown className="h-4 w-4 text-gray-500" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link to="/talent/profile" className="cursor-pointer">
+                    <User className="h-4 w-4 mr-2" />
+                    Profile
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/talent/settings" className="cursor-pointer">
+                    <Settings className="h-4 w-4 mr-2" />
+                    Settings
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout} className="text-red-600 cursor-pointer">
+                  Sign Out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </aside>
@@ -153,9 +169,14 @@ const TalentLayout = ({ children }: TalentLayoutProps) => {
 
             {/* Right side icons (Bell) */}
             <div className="flex items-center space-x-3">
-              <Link to="/talent/notifications">
+              <Link to="/talent/notifications" className="relative">
                 <Button variant="ghost" size="icon" className="text-gray-500 hover:text-gray-700">
                   <Bell className="h-5 w-5" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
+                      {unreadCount}
+                    </span>
+                  )}
                 </Button>
               </Link>
             </div>

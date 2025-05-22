@@ -31,47 +31,129 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { auth } from "@/lib/api";
+import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
 
-// Mock data for charts
-const bookingData = [
-  { month: 'Jan', bookings: 4 },
-  { month: 'Feb', bookings: 6 },
-  { month: 'Mar', bookings: 8 },
-  { month: 'Apr', bookings: 5 },
-  { month: 'May', bookings: 7 },
-  { month: 'Jun', bookings: 9 },
-];
-
-const categoryData = [
-  { name: 'Photography', value: 40 },
-  { name: 'Videography', value: 30 },
-  { name: 'Event Planning', value: 20 },
-  { name: 'Music', value: 10 },
-];
+interface DashboardData {
+  totalBookings: number;
+  pendingBookings: number;
+  completedBookings: number;
+  upcomingBookings: Array<{
+    id: number;
+    date: string;
+    clientName: string;
+    status: string;
+  }>;
+  recentReviews: Array<{
+    id: number;
+    rating: number;
+    comment: string;
+    clientName: string;
+    date: string;
+  }>;
+  earnings: {
+    total: number;
+    thisMonth: number;
+    lastMonth: number;
+  };
+  bookingTrends: Array<{
+    month: string;
+    bookings: number;
+  }>;
+  serviceCategories: Array<{
+    name: string;
+    value: number;
+  }>;
+}
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
 const TalentDashboard = () => {
   const navigate = useNavigate();
-  const [recentBookings, setRecentBookings] = useState([
-    {
-      id: 1,
-      clientName: "John Doe",
-      service: "Wedding Photography",
-      date: "2024-03-15",
-      status: "confirmed",
-      amount: 500
-    },
-    {
-      id: 2,
-      clientName: "Jane Smith",
-      service: "Event Videography",
-      date: "2024-03-20",
-      status: "pending",
-      amount: 750
-    },
-    // Add more mock bookings as needed
-  ]);
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchDashboardData = async () => {
+    try {
+      const response = await auth.getTalentDashboardData();
+      setData(response);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching dashboard data:', err);
+      setError('Failed to load dashboard data');
+      toast.error('Could not load dashboard data. Please try refreshing.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <Skeleton className="h-4 w-[100px]" />
+                <Skeleton className="h-5 w-5" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-8 w-[60px] mb-2" />
+                <Skeleton className="h-4 w-[120px]" />
+                <Skeleton className="h-2 w-full mt-2" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
+            <Card>
+              <CardHeader>
+                <Skeleton className="h-6 w-[150px]" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-[300px] w-full" />
+              </CardContent>
+            </Card>
+          </div>
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <Skeleton className="h-6 w-[150px]" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-[300px] w-full" />
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-red-500">{error}</p>
+        <Button 
+          onClick={fetchDashboardData}
+          className="mt-4 bg-rwanda-green hover:bg-rwanda-green/90"
+        >
+          Retry
+        </Button>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return null;
+  }
 
   return (
     <div className="space-y-6">
@@ -83,9 +165,9 @@ const TalentDashboard = () => {
             <Calendar className="h-5 w-5 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">24</div>
-            <p className="text-xs text-muted-foreground">+5 from last month</p>
-            <Progress value={75} className="mt-2 h-2" />
+            <div className="text-2xl font-bold">{data.totalBookings}</div>
+            <p className="text-xs text-muted-foreground">All time bookings</p>
+            <Progress value={(data.completedBookings / data.totalBookings) * 100} className="mt-2 h-2" />
           </CardContent>
         </Card>
         <Card>
@@ -94,31 +176,31 @@ const TalentDashboard = () => {
             <DollarSign className="h-5 w-5 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">$12,500</div>
-            <p className="text-xs text-muted-foreground">+12% from last month</p>
-            <Progress value={60} className="mt-2 h-2" />
+            <div className="text-2xl font-bold">RWF {data.earnings.total.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">Total earnings</p>
+            <Progress value={(data.earnings.thisMonth / data.earnings.total) * 100} className="mt-2 h-2" />
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Overall Rating</CardTitle>
-            <Star className="h-5 w-5 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Pending Bookings</CardTitle>
+            <Clock className="h-5 w-5 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">4.8/5</div>
-            <p className="text-xs text-muted-foreground">Based on 120 reviews</p>
-            <Progress value={90} className="mt-2 h-2" />
+            <div className="text-2xl font-bold">{data.pendingBookings}</div>
+            <p className="text-xs text-muted-foreground">Awaiting confirmation</p>
+            <Progress value={(data.pendingBookings / data.totalBookings) * 100} className="mt-2 h-2" />
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Clients</CardTitle>
-            <User className="h-5 w-5 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Completed Bookings</CardTitle>
+            <Award className="h-5 w-5 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">8</div>
-            <p className="text-xs text-muted-foreground">2 new this month</p>
-            <Progress value={40} className="mt-2 h-2" />
+            <div className="text-2xl font-bold">{data.completedBookings}</div>
+            <p className="text-xs text-muted-foreground">Successful bookings</p>
+            <Progress value={(data.completedBookings / data.totalBookings) * 100} className="mt-2 h-2" />
           </CardContent>
         </Card>
       </div>
@@ -133,7 +215,7 @@ const TalentDashboard = () => {
             </CardHeader>
             <CardContent className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={bookingData}>
+                <BarChart data={data.bookingTrends}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" fontSize={12} />
                   <YAxis fontSize={12} />
@@ -153,7 +235,7 @@ const TalentDashboard = () => {
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={categoryData}
+                    data={data.serviceCategories}
                     cx="50%"
                     cy="50%"
                     labelLine={false}
@@ -162,7 +244,7 @@ const TalentDashboard = () => {
                     dataKey="value"
                     label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                   >
-                    {categoryData.map((entry, index) => (
+                    {data.serviceCategories.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
@@ -178,26 +260,27 @@ const TalentDashboard = () => {
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Recent Bookings</CardTitle>
+              <CardTitle>Upcoming Bookings</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {recentBookings.length > 0 ? recentBookings.map((booking) => (
+              {data.upcomingBookings.length > 0 ? data.upcomingBookings.map((booking) => (
                 <div key={booking.id} className="flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors">
                   <div>
                     <p className="font-semibold text-sm">{booking.clientName}</p>
-                    <p className="text-xs text-gray-500">{booking.service}</p>
+                    <p className="text-xs text-gray-500">{new Date(booking.date).toLocaleDateString()}</p>
                   </div>
-                  <div className="text-right">
-                    <p className="font-medium text-sm">${booking.amount}</p>
                     <Badge 
-                      variant={booking.status === 'confirmed' ? 'default' : booking.status === 'pending' ? 'secondary' : 'outline'}
-                      className={`mt-1 text-xs px-2 py-0.5 ${booking.status === 'confirmed' ? 'bg-green-100 text-green-700' : booking.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-700'}`}
+                    variant={booking.status === 'CONFIRMED' ? 'default' : booking.status === 'PENDING' ? 'secondary' : 'outline'}
+                    className={`text-xs px-2 py-0.5 ${
+                      booking.status === 'CONFIRMED' ? 'bg-green-100 text-green-700' : 
+                      booking.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700' : 
+                      'bg-gray-100 text-gray-700'
+                    }`}
                     >
                       {booking.status}
                     </Badge>
-                  </div>
                 </div>
-              )) : <p className="text-sm text-gray-500 text-center py-4">No recent bookings.</p>}
+              )) : <p className="text-sm text-gray-500 text-center py-4">No upcoming bookings.</p>}
             </CardContent>
           </Card>
 

@@ -1,5 +1,5 @@
-
 import React, { createContext, useState, useContext, useEffect } from "react";
+import { auth } from "@/lib/api";
 
 interface UserProfile {
   name: string;
@@ -7,11 +7,14 @@ interface UserProfile {
   role: "user" | "talent";
   talentCategory?: string;
   registrationComplete?: boolean;
+  userType: string;
+  fullName?: string;
+  id?: number;
 }
 
 interface AuthContextType {
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<string>;
   logout: () => void;
   resetPassword: (email: string) => Promise<void>;
   loading: boolean;
@@ -19,6 +22,7 @@ interface AuthContextType {
   register: (name: string, email: string, password: string, role: "user" | "talent", talentCategory?: string) => Promise<void>;
   getRedirectPath: () => string;
   completeRegistration: () => void;
+  refreshUserProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -52,21 +56,49 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     checkAuth();
   }, []);
 
+  const refreshUserProfile = async () => {
+    try {
+      const profile = await auth.getProfile();
+      const userProfile: UserProfile = {
+        name: profile.fullName,
+        email: profile.email,
+        role: profile.userType === "TALENT" ? "talent" : "user",
+        userType: profile.userType,
+        fullName: profile.fullName,
+        id: profile.id,
+        ...(profile.userType === "TALENT" ? { 
+          talentCategory: profile.category,
+          registrationComplete: true
+        } : {})
+      };
+      setUserProfile(userProfile);
+      localStorage.setItem("userProfile", JSON.stringify(userProfile));
+    } catch (error) {
+      console.error("Error refreshing user profile:", error);
+      // If profile refresh fails, log out the user
+      logout();
+    }
+  };
+
   const login = async (email: string, password: string) => {
-    // For demo purposes, we're just setting localStorage
-    // In a real app, this would call your API
-    localStorage.setItem("isAuthenticated", "true");
+    try {
+      const response = await auth.login(email, password);
+      if (response && response.token) {
+        console.log('Token received:', response.token);
+        localStorage.setItem("token", response.token);
+        setIsAuthenticated(true);
     
-    // Mock user profile
-    const mockProfile: UserProfile = {
-      name: email.split('@')[0], // Just use part of the email as name for demo
-      email,
-      role: "user" // Default role when logging in
-    };
-    
-    localStorage.setItem("userProfile", JSON.stringify(mockProfile));
-    setUserProfile(mockProfile);
-    setIsAuthenticated(true);
+        // Fetch user profile to determine user type
+        await refreshUserProfile();
+        
+        // Return the user type for redirection
+        return response.userType || "REGULAR_USER";
+      }
+      throw new Error("Login failed - no token received");
+    } catch (error) {
+      console.error("Login error:", error);
+      throw error;
+    }
   };
 
   const register = async (name: string, email: string, password: string, role: "user" | "talent", talentCategory?: string) => {
@@ -80,8 +112,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       role,
       ...(role === "talent" ? { 
         talentCategory,
-        registrationComplete: false // New talents need to complete registration
-      } : {})
+        registrationComplete: false, // New talents need to complete registration
+        userType: "talent" // Assuming a default userType for new talents
+      } : { userType: "user" }),
+      ...(role === "talent" ? { talentCategory } : {})
     };
     
     localStorage.setItem("userProfile", JSON.stringify(userProfile));
@@ -90,8 +124,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = () => {
-    localStorage.removeItem("isAuthenticated");
-    localStorage.removeItem("userProfile");
+    localStorage.removeItem("token");
+    localStorage.removeItem("userType");
     setIsAuthenticated(false);
     setUserProfile(null);
   };
@@ -111,16 +145,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const getRedirectPath = () => {
     if (!userProfile) return "/";
     
-    if (userProfile.role === "talent") {
-      // If talent user hasn't completed registration, send to registration page
-      if (!userProfile.registrationComplete) {
-        return "/register";
-      }
-      // If registration is complete, send to dashboard
-      return "/talent-dashboard";
+    if (userProfile.userType === "TALENT") {
+      return "/talent/dashboard";
     }
     
-    return "/"; // Redirect regular users to home page
+    return "/home"; // Redirect regular users to home page
   };
 
   // Function to mark talent registration as complete
@@ -144,7 +173,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     userProfile,
     register,
     getRedirectPath,
-    completeRegistration
+    completeRegistration,
+    refreshUserProfile
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

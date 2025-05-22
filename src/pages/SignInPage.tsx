@@ -11,7 +11,7 @@ import { auth } from "@/lib/api";
 
 const SignInPage = () => {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, refreshUserProfile } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -26,43 +26,23 @@ const SignInPage = () => {
 
     try {
       if (email && password) {
-        const loginResponse = await auth.login(email, password);
+        // Get user type from login response
+        const userType = await login(email, password);
         
-        if (loginResponse && loginResponse.token) {
-          localStorage.setItem("token", loginResponse.token);
-          // Call the context's login function. It might internally fetch the profile
-          // or set up the user state based on the token.
-          await login(email, password); 
-          toast.success("Sign in successful! Verifying user type...");
-
-          // Fetch user profile directly here to determine userType for redirection
-          // This ensures immediate redirection logic has the necessary data.
-          const userProfileData = await auth.getProfile(); 
-
-          if (userProfileData) {
-            // The AuthContext might already have the profile, or will fetch it.
-            // If you have a specific setter in AuthContext like `setUserProfile(userProfileData)`, call it here.
-            // For now, we'll rely on userProfileData for immediate redirection.
+        // Refresh user profile to get latest data
+        await refreshUserProfile();
             
             setSuccess("Profile verified! Redirecting...");
-            toast.success(`Welcome back, ${userProfileData.fullName || 'user'}!`);
+        toast.success("Welcome back!");
 
-            setTimeout(() => {
-              if (userProfileData.userType === "TALENT") {
-                navigate("/talent/dashboard");
+        // Redirect based on user type
+        setTimeout(() => {
+          if (userType === "TALENT") {
+          navigate("/talent/dashboard");
               } else {
-                navigate("/home"); // Redirect to the main homepage for other user types
+            navigate("/home");
               }
-            }, 1000);
-          } else {
-            setError("Failed to fetch user profile after login.");
-            toast.error("Could not retrieve user details. Please try again.");
-            localStorage.removeItem("token"); 
-          }
-        } else {
-           setError("Login failed. No token received.");
-           toast.error("Login failed. Please try again.");
-        }
+        }, 1000);
       } else {
         setError("Please enter both email and password.");
       }

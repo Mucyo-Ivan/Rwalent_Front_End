@@ -22,22 +22,29 @@ import {
   Clock,
   Edit3,
   AlertCircle,
-  User as UserIcon
+  User as UserIcon,
+  Save,
+  X
 } from 'lucide-react';
 import { toast } from "sonner";
 import { auth, Profile } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface UpdateProfilePayload {
   fullName: string;
   email: string; 
   phoneNumber?: string | null; 
   location?: string | null;   
+  bio?: string | null;
+  serviceAndPricing?: string | null;
+  category?: string | null;
 }
 
 const TalentProfile = () => {
   const navigate = useNavigate();
+  const { userProfile, updateUserProfile } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -47,6 +54,7 @@ const TalentProfile = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
 
   const fetchProfileData = useCallback(async () => {
     setIsLoading(true);
@@ -60,6 +68,8 @@ const TalentProfile = () => {
         phoneNumber: data.phoneNumber,
         location: data.location,
         bio: data.bio,
+        serviceAndPricing: data.serviceAndPricing,
+        category: data.category,
       });
     } catch (err) {
       console.error("Failed to fetch talent profile:", err);
@@ -92,7 +102,6 @@ const TalentProfile = () => {
         setNewPhotoPreview(reader.result as string);
       };
       reader.readAsDataURL(file);
-      toast.info("New profile picture selected. Ensure you have a separate process to upload it.");
     } else {
       setNewPhotoFile(null);
       setNewPhotoPreview(null);
@@ -102,22 +111,37 @@ const TalentProfile = () => {
   const handleSaveChanges = async () => {
     if (!editableProfile || !profile) return;
 
-    if (newPhotoFile) {
-      toast.warning("Photo upload needs a separate API endpoint. Uploading text fields only.");
-      setNewPhotoFile(null);
-      setNewPhotoPreview(null);
-    }
+    setIsSaving(true);
+    try {
+      let updatedProfileData;
 
+    if (newPhotoFile) {
+        // If there's a new photo, use the updateProfileWithPhoto endpoint
+        const formData = new FormData();
+        formData.append('fullName', editableProfile.fullName || profile.fullName);
+        formData.append('email', editableProfile.email || profile.email);
+        formData.append('phoneNumber', editableProfile.phoneNumber || '');
+        formData.append('location', editableProfile.location || '');
+        formData.append('bio', editableProfile.bio || '');
+        formData.append('serviceAndPricing', editableProfile.serviceAndPricing || '');
+        formData.append('category', editableProfile.category || '');
+        formData.append('photoFile', newPhotoFile);
+
+        updatedProfileData = await auth.updateProfileWithPhoto(formData);
+      } else {
+        // If no new photo, use the regular update endpoint
     const payload: UpdateProfilePayload = {
       fullName: editableProfile.fullName || profile.fullName,
       email: editableProfile.email || profile.email,
       phoneNumber: editableProfile.phoneNumber,
       location: editableProfile.location,
+          bio: editableProfile.bio,
+          serviceAndPricing: editableProfile.serviceAndPricing,
+          category: editableProfile.category,
     };
 
-    setIsSaving(true);
-    try {
-      const updatedProfileData = await auth.updateProfile(payload);
+        updatedProfileData = await auth.updateProfile(payload);
+      }
 
       setProfile(updatedProfileData); 
       setEditableProfile({
@@ -126,10 +150,21 @@ const TalentProfile = () => {
          phoneNumber: updatedProfileData.phoneNumber,
          location: updatedProfileData.location,
          bio: updatedProfileData.bio, 
+        serviceAndPricing: updatedProfileData.serviceAndPricing,
+        category: updatedProfileData.category,
       });
 
-      toast.success("Profile details updated successfully!");
+      // Update the global user profile
+      if (updateUserProfile) {
+        updateUserProfile(updatedProfileData);
+      }
 
+      // Clear the photo file states
+      setNewPhotoFile(null);
+      setNewPhotoPreview(null);
+      setIsEditing(false);
+
+      toast.success("Profile details updated successfully!");
     } catch (error: any) {
       console.error("Failed to update profile:", error);
       const errorMsg = error.response?.data?.detail || error.message || "Please try again.";
@@ -137,6 +172,21 @@ const TalentProfile = () => {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleCancelEdit = () => {
+    setEditableProfile({
+      fullName: profile?.fullName || '',
+      email: profile?.email || '',
+      phoneNumber: profile?.phoneNumber || '',
+      location: profile?.location || '',
+      bio: profile?.bio || '',
+      serviceAndPricing: profile?.serviceAndPricing || '',
+      category: profile?.category || '',
+    });
+    setNewPhotoFile(null);
+    setNewPhotoPreview(null);
+    setIsEditing(false);
   };
 
   if (isLoading) {
@@ -186,6 +236,8 @@ const TalentProfile = () => {
                     <AvatarImage src={newPhotoPreview || profile.photoUrl || undefined} alt={profile.fullName || "User Avatar"} />
                     <AvatarFallback>{profile.fullName?.charAt(0).toUpperCase() || 'T'}</AvatarFallback>
                   </Avatar>
+                {isEditing && (
+                  <>
                   <input 
                     type="file"
                     ref={fileInputRef}
@@ -202,6 +254,8 @@ const TalentProfile = () => {
                   >
                     <Camera className="h-5 w-5 text-gray-600" />
                   </Button>
+                  </>
+                )}
                 </div>
                 <h2 className="text-2xl font-bold text-gray-800">{profile.fullName || 'User Name Unavailable'}</h2>
                 <p className="text-rwanda-green font-medium">{profile.category || 'Talent'}</p>
@@ -228,51 +282,149 @@ const TalentProfile = () => {
             <Card className="shadow-lg">
               <Tabs defaultValue="profile" className="w-full">
                 <TabsList className="grid w-full grid-cols-2 bg-gray-50 rounded-t-lg">
-                  <TabsTrigger value="profile">Edit Profile</TabsTrigger>
-                  <TabsTrigger value="portfolio">Manage Portfolio</TabsTrigger>
+                <TabsTrigger value="profile">Profile Information</TabsTrigger>
+                <TabsTrigger value="services">Services & Pricing</TabsTrigger>
                 </TabsList>
                 
                 <TabsContent value="profile" className="p-6">
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="text-xl font-semibold">Profile Information</h3>
+                  {!isEditing ? (
+                    <Button onClick={() => setIsEditing(true)} variant="outline" className="flex items-center">
+                      <Edit3 className="h-4 w-4 mr-2" />
+                      Edit Profile
+                    </Button>
+                  ) : (
+                    <div className="flex gap-2">
+                      <Button onClick={handleCancelEdit} variant="outline" className="flex items-center">
+                        <X className="h-4 w-4 mr-2" />
+                        Cancel
+                      </Button>
+                      <Button onClick={handleSaveChanges} disabled={isSaving} className="flex items-center bg-rwanda-green hover:bg-rwanda-green/90">
+                        <Save className="h-4 w-4 mr-2" />
+                        {isSaving ? 'Saving...' : 'Save Changes'}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
                   <form onSubmit={(e) => { e.preventDefault(); handleSaveChanges(); }} className="space-y-6">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                       <div>
                         <Label htmlFor="fullName" className="font-medium">Full Name</Label>
-                        <Input id="fullName" name="fullName" value={editableProfile.fullName || ''} onChange={handleInputChange} className="mt-1" />
+                      <Input 
+                        id="fullName" 
+                        name="fullName" 
+                        value={editableProfile.fullName || ''} 
+                        onChange={handleInputChange} 
+                        className="mt-1"
+                        disabled={!isEditing}
+                      />
                       </div>
                       <div>
                         <Label htmlFor="email" className="font-medium">Email Address</Label>
-                        <Input id="email" name="email" type="email" value={editableProfile.email || ''} onChange={handleInputChange} className="mt-1" />
+                      <Input 
+                        id="email" 
+                        name="email" 
+                        type="email" 
+                        value={editableProfile.email || ''} 
+                        onChange={handleInputChange} 
+                        className="mt-1"
+                        disabled={!isEditing}
+                      />
                       </div>
                     </div>
                     
                     <div>
                       <Label htmlFor="location" className="font-medium">Location</Label>
-                      <Input id="location" name="location" value={editableProfile.location || ''} onChange={handleInputChange} placeholder="e.g., Kigali, Rwanda" className="mt-1"/>
+                    <Input 
+                      id="location" 
+                      name="location" 
+                      value={editableProfile.location || ''} 
+                      onChange={handleInputChange} 
+                      placeholder="e.g., Kigali, Rwanda" 
+                      className="mt-1"
+                      disabled={!isEditing}
+                    />
                     </div>
 
                     <div>
                       <Label htmlFor="phoneNumber" className="font-medium">Phone Number</Label>
-                      <Input id="phoneNumber" name="phoneNumber" type="tel" value={editableProfile.phoneNumber || ''} onChange={handleInputChange} className="mt-1" />
+                    <Input 
+                      id="phoneNumber" 
+                      name="phoneNumber" 
+                      type="tel" 
+                      value={editableProfile.phoneNumber || ''} 
+                      onChange={handleInputChange} 
+                      className="mt-1"
+                      disabled={!isEditing}
+                    />
                     </div>
 
                     <div>
                       <Label htmlFor="bio" className="font-medium">Bio</Label>
-                      <Textarea id="bio" name="bio" rows={4} value={editableProfile.bio || ''} onChange={handleInputChange} className="mt-1" placeholder="Tell clients about yourself..."></Textarea>
+                    <Textarea 
+                      id="bio" 
+                      name="bio" 
+                      rows={4} 
+                      value={editableProfile.bio || ''} 
+                      onChange={handleInputChange} 
+                      className="mt-1" 
+                      placeholder="Tell clients about yourself..."
+                      disabled={!isEditing}
+                    />
                     </div>
+                </form>
+              </TabsContent>
 
-                    <div className="flex justify-end pt-4">
-                      <Button type="submit" disabled={isSaving} className="bg-rwanda-green hover:bg-rwanda-green/90">
+              <TabsContent value="services" className="p-6">
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="text-xl font-semibold">Services & Pricing</h3>
+                  {!isEditing ? (
+                    <Button onClick={() => setIsEditing(true)} variant="outline" className="flex items-center">
+                      <Edit3 className="h-4 w-4 mr-2" />
+                      Edit Services
+                    </Button>
+                  ) : (
+                    <div className="flex gap-2">
+                      <Button onClick={handleCancelEdit} variant="outline" className="flex items-center">
+                        <X className="h-4 w-4 mr-2" />
+                        Cancel
+                      </Button>
+                      <Button onClick={handleSaveChanges} disabled={isSaving} className="flex items-center bg-rwanda-green hover:bg-rwanda-green/90">
+                        <Save className="h-4 w-4 mr-2" />
                         {isSaving ? 'Saving...' : 'Save Changes'}
                       </Button>
                     </div>
-                  </form>
-                </TabsContent>
+                  )}
+                </div>
 
-                <TabsContent value="portfolio" className="p-6">
-                   <CardTitle>Manage Portfolio</CardTitle>
-                   <CardDescription>Upload photos or videos of your work.</CardDescription>
-                   <div className="mt-4 border-2 border-dashed border-gray-300 rounded-lg p-10 text-center">
-                      <p className="text-muted-foreground">Portfolio management feature coming soon.</p>
+                <div className="space-y-6">
+                  <div>
+                    <Label htmlFor="category" className="font-medium">Category</Label>
+                    <Input 
+                      id="category" 
+                      name="category" 
+                      value={editableProfile.category || ''} 
+                      onChange={handleInputChange} 
+                      className="mt-1"
+                      disabled={!isEditing}
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="serviceAndPricing" className="font-medium">Services & Pricing</Label>
+                    <Textarea 
+                      id="serviceAndPricing" 
+                      name="serviceAndPricing" 
+                      rows={6} 
+                      value={editableProfile.serviceAndPricing || ''} 
+                      onChange={handleInputChange} 
+                      className="mt-1" 
+                      placeholder="Describe your services and pricing..."
+                      disabled={!isEditing}
+                    />
+                  </div>
                    </div>
                 </TabsContent>
               </Tabs>

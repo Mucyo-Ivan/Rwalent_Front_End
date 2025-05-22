@@ -2,7 +2,7 @@ import axios from 'axios';
 import { toast } from "sonner";
 
 const api = axios.create({
-  baseURL: 'http://localhost:8080',
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8080',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -12,15 +12,16 @@ const api = axios.create({
 // Add request interceptor for debugging
 api.interceptors.request.use(
   config => {
-    // Add Authorization header if token exists
     const token = localStorage.getItem('token');
     if (token && config.headers) {
       config.headers['Authorization'] = `Bearer ${token}`;
+      console.log('[API] Request headers:', config.headers);
+    } else {
+      // Only show warning for protected routes
+      if (config.url && !config.url.includes('/api/auth/')) {
+        console.warn('[API] No token found in localStorage for protected route:', config.url);
+      }
     }
-    // Log removal for brevity, uncomment if needed
-    // console.log('Making request to:', config.url);
-    // console.log('Request headers:', config.headers);
-    // console.log('Request data:', config.data);
     return config;
   },
   error => {
@@ -32,17 +33,35 @@ api.interceptors.request.use(
 // Add response interceptor for debugging
 api.interceptors.response.use(
   response => {
-    // console.log('Response received:', response.data);
+    console.log('[API] Response received:', response.status, response.config.url);
     return response;
   },
   error => {
-    // Simplified error logging
     if (error.response) {
-      console.error(`Error Response: ${error.response.status} ${error.response.statusText}`, error.response.data);
+      // Handle 401 Unauthorized
+      if (error.response.status === 401) {
+        console.log('[API] 401 Unauthorized - clearing token and redirecting to login');
+        localStorage.removeItem('token');
+        localStorage.removeItem('userType');
+        window.location.href = '/signin';
+        toast.error('Your session has expired. Please sign in again.');
+      }
+      // Handle 403 Forbidden
+      else if (error.response.status === 403) {
+        console.log('[API] 403 Forbidden - access denied:', error.response.config.url);
+        toast.error('You do not have permission to perform this action.');
+      }
+      // Handle other errors
+      else {
+        console.error(`[API] Error Response: ${error.response.status} ${error.response.statusText}`, error.response.data);
+        toast.error(error.response.data?.message || 'An error occurred. Please try again.');
+      }
     } else if (error.request) {
-      console.error('Error Request:', error.request);
+      console.error('[API] Error Request:', error.request);
+      toast.error('Network error. Please check your connection.');
     } else {
-      console.error('Error Message:', error.message);
+      console.error('[API] Error Message:', error.message);
+      toast.error('An unexpected error occurred.');
     }
     return Promise.reject(error);
   }
@@ -132,9 +151,12 @@ interface UpdateProfilePayload {
 export const auth = {
   login: async (email: string, password: string) => {
     const response = await api.post('/api/auth/login', { email, password });
-    // Assuming login response contains the token
     if (response.data.token) {
         localStorage.setItem('token', response.data.token);
+      // Also store user type for quick access
+      if (response.data.userType) {
+        localStorage.setItem('userType', response.data.userType);
+      }
     }
     return response.data;
   },
@@ -151,16 +173,34 @@ export const auth = {
   // Updated registerTalent to handle FormData and Content-Type
   registerTalent: async (formData: FormData): Promise<any> => {
     console.log('Sending talent registration request with FormData...');
-    const token = localStorage.getItem('token'); // Get token for manual header addition if needed
     const response = await api.post('/api/auth/register', formData, {
       headers: {
-        // Explicitly set Content-Type for multipart/form-data
-        // Letting Axios handle it by omitting/setting undefined might also work, but this is explicit.
         'Content-Type': 'multipart/form-data',
-        // Add Authorization header manually IF interceptor somehow fails for this specific call 
-        // (usually not needed if interceptor works reliably)
-        // ...(token && { 'Authorization': `Bearer ${token}` })
-      }
+      },
+      transformRequest: [(data) => data], // Prevent axios from transforming the FormData
+    });
+    return response.data;
+  },
+  // New function to upload profile picture
+  uploadProfilePicture: async (file: File): Promise<{ photoUrl: string }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const response = await api.post('/api/auth/upload-profile-picture', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+      transformRequest: [(data) => data],
+    });
+    return response.data;
+  },
+  // New function to update profile with photo
+  updateProfileWithPhoto: async (profileData: FormData): Promise<Profile> => {
+    const response = await api.put('/api/auth/profile', profileData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+      transformRequest: [(data) => data],
     });
     return response.data;
   },
@@ -172,9 +212,13 @@ export const auth = {
   },
   // getProfile no longer needs the token argument if the interceptor handles it
   getProfile: async (): Promise<Profile> => {
-    // Token is added by the request interceptor
     const response = await api.get('/api/auth/profile');
-    return response.data;
+    const profile = response.data;
+    // Update stored user type if it changed
+    if (profile.userType) {
+      localStorage.setItem('userType', profile.userType);
+    }
+    return profile;
   },
   // Updated updateProfile function to use the specific payload and endpoint
   updateProfile: async (profileData: UpdateProfilePayload): Promise<Profile> => {
@@ -184,7 +228,12 @@ export const auth = {
       const response = await api.put('/api/auth/profile', profileData);
       // Assuming response contains the updated profile, potentially with photoUrl/profilePictureUrl
       // Sticking with Profile return type for now.
-      return response.data; 
+    return response.data;
+  },
+  // Add new function to get talent dashboard data
+  getTalentDashboardData: async () => {
+    const response = await api.get('/api/talent/dashboard');
+    return response.data;
   }
 };
 
@@ -349,31 +398,66 @@ export const talent = {
 export interface UserNotification {
   id: number;
   message: string;
-  status: 'BOOKING_APPROVED' | 'BOOKING_REJECTED' | 'INFO' | string; // Example statuses
+  status: 'BOOKING_APPROVED' | 'BOOKING_REJECTED' | 'INFO' | string;
+  notificationType: 'BOOKING_ACCEPTED' | 'BOOKING_REJECTED' | 'NEW_MESSAGE' | 'INFO' | string;
   relatedBookingId?: number | null;
   isRead: boolean;
-  createdAt: string; // ISO 8601 timestamp string
+  createdAt: string;
+}
+
+export interface NotificationPage {
+  content: UserNotification[];
+  pageable: {
+    pageNumber: number;
+    pageSize: number;
+    sort: any;
+  };
+  totalElements: number;
+  totalPages: number;
+  last: boolean;
+  first: boolean;
+  empty: boolean;
 }
 
 export const notifications = {
-  getUserNotifications: async (): Promise<UserNotification[]> => {
-    console.log("Fetching user notifications...");
-    // Assuming the backend endpoint is /api/notifications for the logged-in user
-    // Token is added by the interceptor
-    try {
-      const response = await api.get<UserNotification[]>('/api/notifications');
-      // Sort notifications by date, newest first
-      return response.data.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    } catch (error) {
-      console.error("Failed to fetch notifications:", error);
-      // Return empty array or re-throw depending on desired error handling
-      return []; 
-    }
+  getUserNotifications: async (page = 0, size = 10): Promise<NotificationPage> => {
+    console.log('[Notifications] Fetching notifications page:', page, 'size:', size);
+    const response = await api.get(`/api/notifications?page=${page}&size=${size}`);
+    console.log('[Notifications] Received notifications:', response.data);
+    return response.data;
   },
-  // Placeholder for marking notifications as read (optional feature)
-  // markAsRead: async (notificationId: number): Promise<void> => {
-  //   await api.patch(`/api/notifications/${notificationId}/read`);
-  // }
+
+  getUnreadCount: async (): Promise<number> => {
+    console.log('[Notifications] Fetching unread count');
+    const response = await api.get('/api/notifications/unread-count');
+    console.log('[Notifications] Unread count:', response.data);
+    return response.data || 0;
+  },
+
+  markAsRead: async (notificationId: number): Promise<void> => {
+    console.log('[Notifications] Marking notification as read:', notificationId);
+    await api.put(`/api/notifications/${notificationId}/mark-read`);
+  },
+
+  markAllAsRead: async (): Promise<void> => {
+    console.log('[Notifications] Marking all notifications as read');
+    await api.put('/api/notifications/mark-all-read');
+  },
+
+  clearNotification: async (notificationId: number): Promise<void> => {
+    console.log('[Notifications] Clearing notification:', notificationId);
+    await api.delete(`/api/notifications/${notificationId}/delete`);
+  },
+
+  clearAllNotifications: async (): Promise<void> => {
+    console.log('[Notifications] Clearing all notifications');
+    await api.delete('/api/notifications/clear-all');
+  },
+
+  deleteReadNotifications: async (): Promise<void> => {
+    console.log('[Notifications] Deleting read notifications');
+    await api.delete('/api/notifications/delete-read');
+  }
 };
 
 export default api; 

@@ -29,43 +29,45 @@ import TalentBookingsPage from "./pages/TalentBookingsPage";
 import TalentLayout from "./components/layouts/TalentLayout";
 import UserNotificationsPage from "./pages/UserNotificationsPage";
 import TalentNotificationsPage from "./pages/TalentNotificationsPage";
+import { NotificationProvider } from "./contexts/NotificationContext";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider defaultTheme="light" storageKey="rwalent-ui-theme">
-      <TooltipProvider>
-        <BrowserRouter>
-          <AuthProvider>
-            <Toaster />
-            <Sonner />
-            <Routes>
+    <TooltipProvider>
+      <BrowserRouter>
+        <AuthProvider>
+          <NotificationProvider>
+          <Toaster />
+          <Sonner />
+          <Routes>
               {/* Default redirect to signin */}
               <Route path="/" element={<Navigate to="/signin" replace />} />
 
-              {/* Public auth routes */}
-              <Route path="/signin" element={<SignInPage />} />
-              <Route path="/signup" element={<SignUpPage />} />
-              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-              <Route path="/register" element={<RegisterTalentPage />} />
-              
+            {/* Public auth routes */}
+            <Route path="/signin" element={<SignInPage />} />
+            <Route path="/signup" element={<SignUpPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/register" element={<RegisterTalentPage />} />
+            
               {/* Protected routes for regular users */}
-              <Route element={
-                <ProtectedRoute>
-                  <Layout />
-                </ProtectedRoute>
-              }>
+            <Route element={
+              <ProtectedRoute>
+                <Layout />
+              </ProtectedRoute>
+            }>
                 <Route path="/home" element={<HomePage />} />
-                <Route path="/talents" element={<TalentDirectoryPage />} />
-                <Route path="/talents/:id" element={<TalentProfilePage />} />
+              <Route path="/talents" element={<TalentDirectoryPage />} />
+              <Route path="/talents/:id" element={<TalentProfilePage />} />
                 <Route path="/book/:talentId" element={<BookTalentPage />} />
-                <Route path="/booking/confirmation" element={<BookingConfirmationPage />} />
-                <Route path="/contact" element={<ContactPage />} />
-                <Route path="/category/:category" element={<CategoryTalentsPage />} />
-                <Route path="/profile" element={<ProfilePage />} />
-                <Route path="/edit-profile" element={<EditProfilePage />} />
-                <Route path="/notifications" element={<UserNotificationsPage />} />
+              <Route path="/booking/confirmation" element={<BookingConfirmationPage />} />
+              <Route path="/contact" element={<ContactPage />} />
+              <Route path="/category/:category" element={<CategoryTalentsPage />} />
+              <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/edit-profile" element={<EditProfilePage />} />
+                  <Route path="/notifications/*" element={<UserNotificationsPage />} />
               </Route>
               
               {/* Talent Dashboard Routes (Protected implicitly by login flow leading here) */}
@@ -81,7 +83,7 @@ const App = () => (
                       <Route path="dashboard" element={<TalentDashboard />} />
                       <Route path="profile" element={<TalentProfile />} />
                       <Route path="bookings" element={<TalentBookingsPage />} />
-                      <Route path="notifications" element={<TalentNotificationsPage />} />
+                        <Route path="notifications/*" element={<TalentNotificationsPage />} />
                       <Route path="settings" element={<TalentSettings />} />
                       <Route path="*" element={<Navigate to="/talent/dashboard" replace />} />
                     </Routes>
@@ -91,10 +93,11 @@ const App = () => (
               
               {/* General Fallback for unauthenticated or unmatched routes */}
               <Route path="*" element={<NotFound />} />
-            </Routes>
-          </AuthProvider>
-        </BrowserRouter>
-      </TooltipProvider>
+          </Routes>
+          </NotificationProvider>
+        </AuthProvider>
+      </BrowserRouter>
+    </TooltipProvider>
     </ThemeProvider>
   </QueryClientProvider>
 );

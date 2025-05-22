@@ -92,52 +92,39 @@ const RegisterTalentPage = () => {
         return;
     }
 
-    // --- Backend Key Check ---
-    // IMPORTANT: Ensure these keys match EXACTLY what your backend API expects for multipart/form-data fields during registration.
-    const registrationDataKeys = {
-        fullName: 'fullName',
-        email: 'email',
-        password: 'password',
-        userType: 'userType',
-        phoneNumber: 'phoneNumber',
-        category: 'category',
-        location: 'location',
-        bio: 'bio',
-        serviceAndPricing: 'serviceAndPricing',
-        photoFile: 'photoFile' // Key for the image file, must match backend expectation
-    };
-    // --- --- 
-
     try {
         // Create FormData to send file and other data
         const talentRegistrationFormData = new FormData();
-        talentRegistrationFormData.append(registrationDataKeys.fullName, formData.fullName);
-        talentRegistrationFormData.append(registrationDataKeys.email, formData.email);
-        talentRegistrationFormData.append(registrationDataKeys.password, formData.password); // Sending password during final step
-        talentRegistrationFormData.append(registrationDataKeys.userType, "TALENT");
-        talentRegistrationFormData.append(registrationDataKeys.phoneNumber, formData.phoneNumber);
-        talentRegistrationFormData.append(registrationDataKeys.category, formData.talentCategory.toUpperCase());
-        talentRegistrationFormData.append(registrationDataKeys.location, formData.location);
-        talentRegistrationFormData.append(registrationDataKeys.bio, formData.bio);
-        talentRegistrationFormData.append(registrationDataKeys.serviceAndPricing, formData.serviceAndPricing);
-        if (photoFile) {
-            talentRegistrationFormData.append(registrationDataKeys.photoFile, photoFile, photoFile.name);
-        }
+      talentRegistrationFormData.append('fullName', formData.fullName);
+      talentRegistrationFormData.append('email', formData.email);
+      talentRegistrationFormData.append('password', formData.password);
+      talentRegistrationFormData.append('userType', 'TALENT');
+      talentRegistrationFormData.append('phoneNumber', formData.phoneNumber);
+      talentRegistrationFormData.append('category', formData.talentCategory.toUpperCase());
+      talentRegistrationFormData.append('location', formData.location);
+      talentRegistrationFormData.append('bio', formData.bio);
+      talentRegistrationFormData.append('serviceAndPricing', formData.serviceAndPricing);
+      talentRegistrationFormData.append('photoFile', photoFile);
 
         console.log("Sending talent registration request with FormData...");
-        // Call the updated registerTalent function which expects FormData
-        await auth.registerTalent(talentRegistrationFormData); 
+      const response = await auth.registerTalent(talentRegistrationFormData);
       
+      if (response) {
       localStorage.removeItem('talentRegistrationData');
       setSuccess("Talent profile created successfully! Redirecting...");
       toast.success("Welcome to Rwalent! Your talent profile has been created.");
+        
+        // Store the token if it's in the response
+        if (response.token) {
+          localStorage.setItem('token', response.token);
+        }
+        
       setTimeout(() => {
-          // Redirect to the talent dashboard (already correctly points to /talent/dashboard)
           navigate("/talent/dashboard"); 
       }, 1500);
+      }
     } catch (err) {
       console.error("Registration error:", err);
-      // Attempt to get more specific error from backend if possible
       const errorMessage = (err instanceof Error && (err as any).response?.data?.message) 
                            ? (err as any).response.data.message 
                            : "Failed to create talent profile. Please check your input and try again.";
