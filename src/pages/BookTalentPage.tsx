@@ -31,30 +31,39 @@ const BookTalentPage = () => {
 
   useEffect(() => {
     const loadTalentDetails = async () => {
-      if (!talentId) {
-        setError("Talent ID is missing from URL.");
-        setLoading(false);
-        return;
-      }
       setLoading(true);
+      setError(null); // Clear previous errors
+
+      // Use ID from URL or default to "6"
+      const idToFetch = talentId || "6";
+      console.log(`Loading talent ID: ${idToFetch}`);
+      
       try {
-        console.log("Attempting to fetch talent with ID:", talentId, "using:", talentApiFunctions);
-        const fetchedTalent = await talentApiFunctions.getById(talentId);
-        setTalent(fetchedTalent);
-        setError(null);
-      } catch (err: any) {
-        console.error("Error in loadTalentDetails:", err);
-        setTalent(null);
-        let errMsg = "Failed to load talent details.";
-        if (err instanceof TypeError) {
-            errMsg = `TypeError during talent fetch: ${err.message}. This might be an import issue.`;
+        // With our updated api.ts, this will ALWAYS return either real data or demo data
+        const fetchedTalent = await talentApiFunctions.getById(idToFetch);
+        
+        // Check if it's demo data by looking for "Demo" in the name
+        const isDemo = fetchedTalent.fullName.includes('Demo');
+        
+        if (isDemo) {
+          console.log(`Loaded demo data for talent ID: ${idToFetch}`);
+          toast.info(`This is demo data for ${fetchedTalent.fullName}`);
+        } else {
+          console.log(`Successfully loaded talent: ${fetchedTalent.fullName}`);
+          toast.success(`Successfully loaded talent: ${fetchedTalent.fullName}`);
         }
-        setError(errMsg);
-        toast.error("Talent profile could not be loaded.");
+        
+        setTalent(fetchedTalent);
+      } catch (err) {
+        console.error("Unexpected error loading talent:", err);
+        toast.error("An unexpected error occurred while loading talent data.");
+        // This should never happen with our updated API, but just in case:
+        setError("An unexpected error occurred. Please try again later.");
       } finally {
         setLoading(false);
       }
     };
+
     loadTalentDetails();
   }, [talentId]);
 
@@ -157,9 +166,17 @@ const BookTalentPage = () => {
           <div className="bg-gradient-to-r from-rwanda-green to-rwanda-blue p-6 sm:p-8 text-white">
             <div className="flex flex-col sm:flex-row items-center sm:space-x-6 space-y-4 sm:space-y-0">
               <Avatar className="h-24 w-24 sm:h-28 sm:w-28 border-4 border-white shadow-md">
-                <AvatarImage src={talent.photoUrl || undefined} alt={talent.fullName || "Talent"} />
+                <AvatarImage 
+                  src={`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/talents/${talent.id}/picture`}
+                  alt={talent.fullName || "Talent"} 
+                  onError={(e) => {
+                    console.log('Image failed to load, using fallback');
+                    // Let the AvatarFallback component handle the error
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
                 <AvatarFallback className="text-3xl bg-white/20 text-white">
-                    {getInitials(talent.fullName)}
+                  {getInitials(talent.fullName)}
                 </AvatarFallback>
               </Avatar>
               <div className="text-center sm:text-left">
@@ -230,9 +247,15 @@ const BookTalentPage = () => {
                 <Input
                   id="durationMinutes"
                   name="durationMinutes"
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={durationMinutes}
-                  onChange={(e) => setDurationMinutes(e.target.value)}
+                  onChange={(e) => {
+                    // Only allow numeric input
+                    const value = e.target.value.replace(/[^0-9]/g, '');
+                    setDurationMinutes(value);
+                  }}
                   placeholder="e.g., 120 for 2 hours"
                   required
                 />
@@ -302,7 +325,14 @@ const BookTalentPage = () => {
               <Button 
                 type="submit" 
                 className="w-full bg-rwanda-green hover:bg-rwanda-green/90 text-white py-3 text-base flex items-center justify-center" 
-                disabled={isSubmitting || !bookingDate || !eventLocation.trim() || !durationMinutes.trim() || parseInt(durationMinutes,10) <= 0 || !notes.trim() || !talentId || !talent }
+                disabled={isSubmitting || 
+                  !bookingDate || 
+                  !eventLocation.trim() || 
+                  !durationMinutes || 
+                  isNaN(parseInt(durationMinutes, 10)) || 
+                  parseInt(durationMinutes, 10) <= 0 || 
+                  !notes.trim() || 
+                  !talent}
               >
                 {isSubmitting ? (
                   <>

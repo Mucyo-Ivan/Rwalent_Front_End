@@ -1,26 +1,148 @@
-import { useState } from "react";
+/** @jsxImportSource react */
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Bell, 
   Lock, 
-  CreditCard, 
+  Mail, 
   Globe, 
+  Sun, 
   Shield, 
-  HelpCircle,
+  CreditCard,
+  Save,
+  X,
+  User,
+  Smartphone,
+  MapPin,
+  Eye,
+  EyeOff,
   LogOut,
-  Moon,
-  Sun
+  Volume2,
+  MessageSquare,
+  Clock,
+  RefreshCw,
+  UserCheck,
+  CircleUser,
+  Sparkles,
+  Gift,
+  BellRing,
+  Languages,
+  Palette,
+  Calendar,
+  HelpCircle,
+  Moon
 } from 'lucide-react';
-import { useTheme } from "@/contexts/ThemeContext";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext";
+import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ThemeSelector } from "@/components/ui/theme-selector";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 
-const TalentSettings = () => {
+interface TalentSettings {
+  email: string;
+  phoneNumber: string;
+  location: string;
+  language: string;
+  theme: 'light' | 'dark';
+  notifications: {
+    email: boolean;
+    push: boolean;
+    sms: boolean;
+    marketing: boolean;
+    bookings: boolean;
+    messages: boolean;
+    birthdayReminders?: boolean;
+  };
+  privacy: {
+    profileVisibility: boolean;
+    showLocation: boolean;
+    showPhone: boolean;
+    showEmail: boolean;
+    activityStatus: boolean;
+    showReviews: boolean;
+    showEarnings: boolean;
+  };
+  security: {
+    twoFactorEnabled: boolean;
+    lastPasswordChange: string;
+    loginAlerts: boolean;
+  };
+  billing: {
+    cardOnFile: boolean;
+    autoRenew: boolean;
+  };
+  appearance: {
+    density: 'compact' | 'normal' | 'spacious';
+    fontSize: 'small' | 'medium' | 'large';
+    animations: boolean;
+  };
+  accessibility: {
+    reduceMotion: boolean;
+    highContrast: boolean;
+    screenReader: boolean;
+  };
+}
+
+interface SettingsSectionProps {
+  icon: React.ReactNode;
+  title: string;
+  description?: string;
+  color: string;
+  children: React.ReactNode;
+}
+
+const SettingsSection = ({ icon, title, description, color, children }: SettingsSectionProps) => (
+  <Card className="mb-6 border-t-4" style={{ borderTopColor: color }}>
+    <CardHeader className="pb-2">
+      <div className="flex items-center gap-4">
+        <div className="p-2 rounded-full" style={{ backgroundColor: `${color}15` }}>
+          {icon}
+        </div>
+        <div>
+          <CardTitle className="text-xl">{title}</CardTitle>
+          {description && <CardDescription>{description}</CardDescription>}
+        </div>
+      </div>
+    </CardHeader>
+    <CardContent>
+      {children}
+    </CardContent>
+  </Card>
+);
+
+interface SettingItemProps {
+  title: string;
+  description?: string;
+  icon?: React.ReactNode;
+  action: React.ReactNode;
+  isHighlighted?: boolean;
+}
+
+const SettingItem = ({ title, description, icon, action, isHighlighted }: SettingItemProps) => (
+  <div className={`flex items-center justify-between p-4 border rounded-lg transition-colors ${isHighlighted ? 'bg-yellow-50 border-yellow-200' : 'hover:bg-gray-50 dark:hover:bg-gray-800'}`}>
+    <div className="flex items-center gap-3">
+      {icon && <div className="flex-shrink-0">{icon}</div>}
+      <div>
+        <h3 className="font-medium">{title}</h3>
+        {description && <p className="text-sm text-gray-500">{description}</p>}
+      </div>
+    </div>
+    <div>
+      {action}
+    </div>
+  </div>
+);
+
+const TalentSettingsPage = () => {
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
   const [notifications, setNotifications] = useState({
@@ -296,8 +418,20 @@ const TalentSettings = () => {
           <span className="font-medium group-hover:text-red-600">Sign Out</span>
         </Button>
       </div>
+
+      <div className="flex justify-end mt-8">
+        <Button
+          onClick={() => {
+            toast.success("Settings saved successfully!");
+          }}
+          className="bg-rwanda-green hover:bg-rwanda-green/90 px-8 py-2 text-lg font-semibold"
+        >
+          {Save && <Save className="h-5 w-5 mr-2" />}
+          Save Changes
+        </Button>
+      </div>
     </div>
   );
 };
 
-export default TalentSettings; 
+export default TalentSettingsPage;

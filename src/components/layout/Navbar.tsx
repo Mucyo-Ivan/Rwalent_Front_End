@@ -20,6 +20,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
+import NotificationDropdown from "@/components/notifications/NotificationDropdown";
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -54,14 +55,7 @@ const Navbar = () => {
             <Link to="/contact" className="text-gray-700 hover:text-rwanda-green font-medium">Contact</Link>
             {isAuthenticated && (
               <div className="flex items-center space-x-4">
-                <Link to="/notifications" className="relative">
-                  <Bell className="h-6 w-6 text-gray-700 hover:text-rwanda-green" />
-                  {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
-                      {unreadCount}
-                    </span>
-                  )}
-                </Link>
+                <NotificationDropdown />
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>

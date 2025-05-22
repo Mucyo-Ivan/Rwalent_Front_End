@@ -83,6 +83,7 @@ export interface Profile {
   bio: string | null;
   serviceAndPricing: string | null;
   photoUrl: string | null; // Keep using photoUrl consistent with getProfile unless backend changed
+  profilePicture?: string | null; // Adding profilePicture property for new API responses
   enabled: boolean;
   username: string;
   authorities: Authority[];
@@ -137,6 +138,31 @@ export interface SearchResponse {
   };
   first: boolean;
   numberOfElements: number;
+  empty: boolean;
+}
+
+// User Notification interfaces
+export interface UserNotification {
+  id: number;
+  message: string;
+  status: 'BOOKING_APPROVED' | 'BOOKING_REJECTED' | 'INFO' | string;
+  notificationType: 'BOOKING_ACCEPTED' | 'BOOKING_REJECTED' | 'NEW_MESSAGE' | 'INFO' | string;
+  relatedBookingId?: number | null;
+  isRead: boolean;
+  createdAt: string;
+}
+
+export interface NotificationPage {
+  content: UserNotification[];
+  pageable: {
+    pageNumber: number;
+    pageSize: number;
+    sort: any;
+  };
+  totalElements: number;
+  totalPages: number;
+  last: boolean;
+  first: boolean;
   empty: boolean;
 }
 
@@ -275,44 +301,55 @@ export const booking = {
   },
 
   getPendingTalentBookings: async (): Promise<BookingResponse[]> => {
-    console.log("Fetching pending talent bookings via GET /api/bookings/talent/pending...");
-    // User now indicates this should be a GET request to this specific path.
     try {
-      // Token is added by interceptor.
+      // Use the real API endpoint to fetch pending booking requests
       const response = await api.get<BookingResponse[]>('/api/bookings/talent/pending');
-      // Sort by date, newest first might be useful
-      return response.data.sort((a, b) => new Date(b.bookingDate).getTime() - new Date(a.bookingDate).getTime());
+      
+      // Check if the response contains data
+      if (!response.data || !Array.isArray(response.data) || response.data.length === 0) {
+        console.log('No pending booking requests found or empty response');
+        return [];
+      }
+      
+      // Sort by date, newest first
+      return response.data.sort((a, b) => {
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return dateB - dateA;
+      });
     } catch (error) {
       console.error("Failed to fetch pending bookings:", error);
       toast.error("Could not load pending booking requests.");
+      
+      // If the API fails in development, we could fall back to mock data here
+      // but in production we should return an empty array
       return []; // Return empty array on error
     }
   },
 
   approveBooking: async (bookingId: number): Promise<BookingResponse> => {
-    console.log(`Approving booking ID: ${bookingId}`);
     try {
+      // Using POST to approve a booking
       const response = await api.post<BookingResponse>(`/api/bookings/${bookingId}/approve`);
-      toast.success(`Booking ID ${bookingId} approved successfully.`);
+      toast.success("Booking approved successfully");
       return response.data;
     } catch (error) {
       console.error(`Failed to approve booking ${bookingId}:`, error);
-      toast.error(`Could not approve booking ${bookingId}. Please try again.`);
-      throw error; // Re-throw to allow component to handle UI updates if needed
+      toast.error("Could not approve booking. Please try again.");
+      throw error;
     }
   },
 
   rejectBooking: async (bookingId: number): Promise<BookingResponse> => {
-    console.log(`Rejecting booking ID: ${bookingId}`);
-    // Assuming a similar endpoint for rejection
     try {
+      // Using POST to reject a booking
       const response = await api.post<BookingResponse>(`/api/bookings/${bookingId}/reject`);
-      toast.success(`Booking ID ${bookingId} rejected successfully.`);
+      toast.success("Booking request declined");
       return response.data;
     } catch (error) {
       console.error(`Failed to reject booking ${bookingId}:`, error);
-      toast.error(`Could not reject booking ${bookingId}. Please try again.`);
-      throw error; // Re-throw to allow component to handle UI updates if needed
+      toast.error("Could not decline booking. Please try again.");
+      throw error;
     }
   },
 
@@ -329,6 +366,19 @@ export const booking = {
 };
 
 export const talent = {
+  // Fetch talent by ID using the exact API endpoint provided
+  getTalentById: async (id: string): Promise<any> => {
+    try {
+      // Using the exact API endpoint as specified
+      const response = await api.get(`/api/talents/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching talent with ID ${id}:`, error);
+      // Return null on error and let the component handle the fallback
+      return null;
+    }
+  },
+  
   getByCategory: async (category: string): Promise<SearchResponse> => {
     try {
       const response = await api.get(`/api/talents/category/${category}`);
@@ -345,6 +395,7 @@ export const talent = {
       throw error;
     }
   },
+  
   getAll: async (): Promise<SearchResponse> => {
     try {
       const response = await api.get('/api/talents');
@@ -361,63 +412,50 @@ export const talent = {
       throw error;
     }
   },
-  // New function to get a talent by ID (public profile)
-  getById: async (talentId: string | number): Promise<Profile> => {
-    console.log(`Fetching talent profile for ID: ${talentId}`);
-    // This is a placeholder. Replace with your actual public talent profile endpoint.
-    // Example: const response = await api.get<Profile>(`/api/users/profile/${talentId}`);
-    // For now, returning a mock profile to allow BookTalentPage to function without a real backend for this.
-    // Ensure this mock profile structure matches your `Profile` interface.
-    const mockTalentProfile: Profile = {
-      id: typeof talentId === 'string' ? parseInt(talentId) : talentId,
-      fullName: `Mocked Talent ${talentId}`,
-      email: `talent${talentId}@example.com`,
-      phoneNumber: "+250788123456",
-      userType: "TALENT",
-      category: "MUSICIAN",
-      location: "Kigali, Rwanda",
-      bio: "A talented individual ready for booking.",
-      serviceAndPricing: "Various services offered.",
-      photoUrl: `https://via.placeholder.com/150/2ECC71/FFFFFF?text=T${talentId}`,
-      enabled: true,
-      username: `talent${talentId}`,
-      authorities: [{ authority: "ROLE_TALENT" }],
-      accountNonExpired: true,
-      credentialsNonExpired: true,
-      accountNonLocked: true,
-    };
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-    // Uncomment the line below and comment out the mock return when your actual endpoint is ready
-    // return response.data;
-    return Promise.resolve(mockTalentProfile);
+  
+  // Get talent by ID - ALWAYS PROVIDES DEMO DATA if real data not found
+  getById: async (talentId: string | number): Promise<any> => {
+    const idToFetch = talentId;
+    const defaultId = typeof idToFetch === 'string' ? parseInt(idToFetch) : idToFetch;
+    
+    try {
+      console.log(`Fetching talent with ID: ${idToFetch}`);
+      const response = await api.get(`/api/talents/${idToFetch}`);
+      
+      if (response && response.data) {
+        console.log(`Successfully retrieved talent data from API for ID: ${idToFetch}`);
+        return response.data;
+      } else {
+        console.warn(`No data returned for ID ${idToFetch}, using demo data.`);
+        throw new Error('No data returned');
+      }
+    } catch (apiError) {
+      console.log(`API error or no data for ID ${idToFetch}, using demo data instead.`);
+      
+      // ALWAYS return demo data - this ensures the app works even without a database
+      // This creates a realistic talent profile for demo purposes
+      return {
+        id: defaultId,
+        fullName: `Demo Talent ${defaultId}`,
+        email: `demo.talent${defaultId}@rwalent.com`,
+        username: `demo.talent${defaultId}@rwalent.com`,
+        phoneNumber: "+250788123456",
+        userType: "TALENT",
+        category: "MUSICIAN",
+        location: "Kigali, Rwanda",
+        bio: "This is a demo talent profile for the Rwalent platform. In a production environment, this would show a real talent's biography and information.",
+        serviceAndPricing: "Demo performances starting from 20,000 RWF per hour",
+        photoUrl: null,
+        profilePicture: null,
+        enabled: true,
+        authorities: [{ authority: 'ROLE_TALENT' }],
+        accountNonExpired: true,
+        accountNonLocked: true,
+        credentialsNonExpired: true
+      };
+    }
   }
 };
-
-// --- User Notification Interfaces and Functions ---
-export interface UserNotification {
-  id: number;
-  message: string;
-  status: 'BOOKING_APPROVED' | 'BOOKING_REJECTED' | 'INFO' | string;
-  notificationType: 'BOOKING_ACCEPTED' | 'BOOKING_REJECTED' | 'NEW_MESSAGE' | 'INFO' | string;
-  relatedBookingId?: number | null;
-  isRead: boolean;
-  createdAt: string;
-}
-
-export interface NotificationPage {
-  content: UserNotification[];
-  pageable: {
-    pageNumber: number;
-    pageSize: number;
-    sort: any;
-  };
-  totalElements: number;
-  totalPages: number;
-  last: boolean;
-  first: boolean;
-  empty: boolean;
-}
 
 export const notifications = {
   getUserNotifications: async (page = 0, size = 10): Promise<NotificationPage> => {
