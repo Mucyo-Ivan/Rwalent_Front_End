@@ -5,8 +5,10 @@ import SearchBar from "@/components/ui/SearchBar";
 import CategoryCard from "@/components/ui/CategoryCard";
 import { auth, talent, Talent, SearchResponse } from "@/lib/api";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Calendar, User, MessageSquare, Settings, Star } from "lucide-react";
 import EnhancedAvatar from "@/components/ui/EnhancedAvatar";
+import { reviews as reviewsApi, Review } from '@/lib/reviews-api';
+import ReviewsSection from '@/components/reviews/HomeReviewsSection';
 
 interface Category {
   id: number;
@@ -96,33 +98,84 @@ const HomePage = () => {
 
   return (
     <div>
-      {/* Hero Section */}
-      <section className="relative bg-gradient-to-r from-rwanda-green/90 to-rwanda-blue/90 text-white py-20 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center lg:text-left lg:w-1/2">
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold leading-tight mb-6 animate-fade-in">
-              Discover Rwanda's Best Local Talents
-            </h1>
-            <p className="text-xl mb-8 text-white/90 max-w-xl mx-auto lg:mx-0 animate-fade-in" style={{ animationDelay: "0.2s" }}>
-              Connect with top skilled professionals for your events, projects, and creative needs across Rwanda.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start animate-fade-in" style={{ animationDelay: "0.4s" }}>
-              <Link to="/talents">
-                <Button className="btn-accent text-lg py-6 px-8">Browse All Talents</Button>
-              </Link>
-              <Link to="/register">
-                <Button variant="outline" className="bg-transparent border-2 border-white text-white hover:bg-white hover:text-rwanda-green text-lg py-6 px-8">
-                  Become a Talent
-                </Button>
-              </Link>
-            </div>
+      {/* Hero Section - Enhanced with Dynamic Visuals and Functional Buttons */}
+      <section className="relative overflow-hidden bg-gradient-to-r from-rwanda-green to-rwanda-blue text-white">
+        {/* Decorative wave divider at top */}
+        <div className="absolute top-0 left-0 w-full overflow-hidden leading-none">
+          <svg className="relative block w-full h-12 sm:h-16" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 120" preserveAspectRatio="none">
+            <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z" fill="rgba(255, 255, 255, 0.1)"></path>
+          </svg>
+        </div>
+        
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-20 md:pt-24 md:pb-28">
+          <div className="max-w-3xl mx-auto text-center z-10 animate-fade-in-up">
+              {/* Highlight Badge */}
+              <div className="inline-block rounded-full bg-rwanda-blue/30 px-4 py-1.5 mb-6 text-sm font-medium text-white backdrop-blur-sm">
+                <span className="mr-2">🇷🇼</span> Rwanda's Premier Talent Platform
+              </div>
+              
+              {/* Main Headline with Multi-line Styling */}
+              <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold leading-tight mb-6">
+                <span className="block">Discover Rwanda's</span>
+                <span className="block text-white">Best Local Talents</span>
+              </h1>
+              
+              <p className="text-xl mb-8 text-white/90 max-w-2xl mx-auto">
+                From traditional <span className="font-bold">drummers</span> and <span className="font-bold">musicians</span> to professional <span className="font-bold">photographers</span> and <span className="font-bold">event planners</span>. Book verified talents for your events, projects, and creative needs across Rwanda.
+              </p>
+              
+              {/* Stats Bar */}
+              <div className="grid grid-cols-3 gap-4 mb-8 backdrop-blur-sm bg-white/5 p-4 rounded-xl max-w-2xl mx-auto">
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-white">500+</p>
+                  <p className="text-sm text-white/80">Active Talents</p>
+                </div>
+                <div className="text-center border-x border-white/10">
+                  <p className="text-2xl font-bold text-white">24/7</p>
+                  <p className="text-sm text-white/80">Support</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-white">100%</p>
+                  <p className="text-sm text-white/80">Satisfaction</p>
+                </div>
+              </div>
+              
+              {/* CTA Buttons - Functional Links */}
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Link to="/talents" className="w-full sm:w-auto">
+                  <Button className="w-full bg-white text-rwanda-green hover:bg-white/90 text-lg py-6 px-8 font-medium shadow-lg shadow-black/5 group transition-all duration-300">
+                    Browse All Talents
+                    <span className="inline-block transition-transform duration-300 group-hover:translate-x-1 ml-2">→</span>
+                  </Button>
+                </Link>
+                <Link to="/signup" className="w-full sm:w-auto">
+                  <Button variant="outline" className="w-full backdrop-blur-sm bg-white/10 border-2 border-white text-white hover:bg-white/20 text-lg py-6 px-8 transition-all duration-300">
+                    Become a Talent
+                  </Button>
+                </Link>
+              </div>
+              
+              {/* Trust Badge */}
+              <div className="mt-6 text-sm text-white/70 flex items-center justify-center">
+                <Star className="h-4 w-4 mr-2 text-white" />
+                Trusted by leading event organizers across Rwanda
+              </div>
           </div>
         </div>
-
-        {/* Abstract shapes background */}
-        <div className="absolute inset-0 overflow-hidden opacity-10">
-          <div className="absolute -right-10 -top-10 w-72 h-72 bg-white rounded-full"></div>
-          <div className="absolute -left-20 bottom-10 w-96 h-96 bg-white rounded-full"></div>
+        
+        {/* Enhanced decorative background elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -right-40 -top-40 w-96 h-96 bg-yellow-400/30 rounded-full blur-3xl opacity-20"></div>
+          <div className="absolute right-1/4 top-1/3 w-72 h-72 bg-white rounded-full blur-3xl opacity-10"></div>
+          <div className="absolute -left-20 bottom-10 w-96 h-96 bg-white rounded-full blur-3xl opacity-10"></div>
+          <div className="absolute left-1/3 -bottom-20 w-72 h-72 bg-yellow-400/30 rounded-full blur-3xl opacity-20"></div>
+        </div>
+        
+        {/* Decorative wave divider at bottom */}
+        <div className="absolute bottom-0 left-0 w-full overflow-hidden leading-none">
+          <svg className="relative block w-full h-12 sm:h-16" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 120" preserveAspectRatio="none">
+            <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z" fill="#ffffff" fillOpacity="0.05"></path>
+          </svg>
         </div>
       </section>
 
@@ -258,106 +311,14 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* Testimonial Section */}
+      {/* Testimonial Section with Dynamic Reviews */}
       <section className="section-padding bg-white">
         <div className="mb-12 text-center">
           <h2 className="text-3xl font-bold text-gray-900 mb-4">What Our Users Say</h2>
+          <p className="text-gray-600">Real feedback from our community</p>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          <div className="bg-gray-50 p-6 rounded-lg shadow border border-gray-100">
-            <div className="flex items-center mb-4">
-              <div className="h-12 w-12 rounded-full bg-rwanda-yellow text-white flex items-center justify-center font-bold text-xl">
-                PM
-              </div>
-              <div className="ml-4">
-                <h4 className="font-medium">Patricia Mugisha</h4>
-                <div className="flex text-rwanda-yellow">
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
-                  </svg>
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
-                  </svg>
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
-                  </svg>
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
-                  </svg>
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
-                  </svg>
-                </div>
-              </div>
-            </div>
-            <p className="text-gray-600">
-              "I found an amazing photographer for my wedding through RwandaTalent. The booking process was smooth and the quality of work exceeded my expectations!"
-            </p>
-          </div>
-          
-          <div className="bg-gray-50 p-6 rounded-lg shadow border border-gray-100">
-            <div className="flex items-center mb-4">
-              <div className="h-12 w-12 rounded-full bg-rwanda-green text-white flex items-center justify-center font-bold text-xl">
-                EN
-              </div>
-              <div className="ml-4">
-                <h4 className="font-medium">Eric Niyonkuru</h4>
-                <div className="flex text-rwanda-yellow">
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
-                  </svg>
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
-                  </svg>
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
-                  </svg>
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
-                  </svg>
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
-                  </svg>
-                </div>
-              </div>
-            </div>
-            <p className="text-gray-600">
-              "As a DJ, joining RwandaTalent has helped me connect with clients I wouldn't have found otherwise. My bookings have increased significantly!"
-            </p>
-          </div>
-          
-          <div className="bg-gray-50 p-6 rounded-lg shadow border border-gray-100">
-            <div className="flex items-center mb-4">
-              <div className="h-12 w-12 rounded-full bg-rwanda-blue text-white flex items-center justify-center font-bold text-xl">
-                JK
-              </div>
-              <div className="ml-4">
-                <h4 className="font-medium">Jacqueline Kamikazi</h4>
-                <div className="flex text-rwanda-yellow">
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
-                  </svg>
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
-                  </svg>
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
-                  </svg>
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
-                  </svg>
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
-                  </svg>
-                </div>
-              </div>
-            </div>
-            <p className="text-gray-600">
-              "Our company regularly books event coordinators through RwandaTalent. The platform makes it easy to find qualified professionals quickly and reliably."
-            </p>
-          </div>
-        </div>
+        <ReviewsSection />
       </section>
     </div>
   );

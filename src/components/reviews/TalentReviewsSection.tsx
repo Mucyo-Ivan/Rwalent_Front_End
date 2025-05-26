@@ -22,10 +22,27 @@ const TalentReviewsSection: React.FC<TalentReviewsSectionProps> = ({
   const [hasReviewed, setHasReviewed] = useState(false);
   const [checkingReviewStatus, setCheckingReviewStatus] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [reviewCount, setReviewCount] = useState(0);
   
   // Skip check if user is not authenticated or is the talent being viewed
   const skipReviewCheck = !isAuthenticated || userProfile?.id === talentId;
   
+  // Fetch review count whenever refreshTrigger changes
+  useEffect(() => {
+    const fetchReviewCount = async () => {
+      try {
+        const summary = await reviewsApi.getRatingSummary(talentId);
+        setReviewCount(summary.totalReviews || 0);
+      } catch (error) {
+        console.error('Error fetching review count:', error);
+        setReviewCount(0);
+      }
+    };
+    
+    fetchReviewCount();
+  }, [talentId, refreshTrigger]);
+  
+  // Check if user has already reviewed this talent
   useEffect(() => {
     if (skipReviewCheck) {
       setCheckingReviewStatus(false);
@@ -57,7 +74,12 @@ const TalentReviewsSection: React.FC<TalentReviewsSectionProps> = ({
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-4">
-        <RatingSummary userId={talentId} refreshTrigger={refreshTrigger} />
+        <div className="flex items-center gap-3">
+          <RatingSummary userId={talentId} refreshTrigger={refreshTrigger} />
+          <div className="bg-yellow-100 text-yellow-700 text-xs px-2 py-0.5 rounded-full font-medium">
+            Total reviews: {reviewCount}
+          </div>
+        </div>
       </div>
       <Tabs defaultValue="reviews" className="w-full">
         <TabsList className="mb-4">
