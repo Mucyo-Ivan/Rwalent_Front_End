@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useMemo } from 'react';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
@@ -69,15 +69,36 @@ export const EnhancedNotificationSidebar: React.FC = () => {
   const lastNotificationRef = useRef<HTMLDivElement | null>(null);
   const [filter, setFilter] = React.useState<'all' | 'unread'>('all');
 
-  // Sort: unread first, then by date
-  const sortedNotifications = [...notifications]
-    .sort((a, b) => {
+  // Effect to automatically switch to 'all' when there are no unread notifications
+  useEffect(() => {
+    if (filter === 'unread' && unreadCount === 0 && notifications.length > 0) {
+      // Wait a moment to avoid immediate tab switch which can be jarring
+      const timer = setTimeout(() => setFilter('all'), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [unreadCount, filter, notifications.length]);
+
+  // Get filtered notifications based on current tab
+  const filteredNotifications = useMemo(() => {
+    // First filter based on tab selection
+    const filtered = filter === 'all' 
+      ? [...notifications] 
+      : notifications.filter(n => !n.isRead);
+      
+    // Then sort: unread first, then by date
+    return filtered.sort((a, b) => {
+      if (filter === 'unread') {
+        // For unread tab, just sort by date (all are unread)
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+      
+      // For all tab, unread first, then by date
       if (a.isRead === b.isRead) {
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       }
       return a.isRead ? 1 : -1;
-    })
-    .filter(n => filter === 'all' || !n.isRead);
+    });
+  }, [notifications, filter, unreadCount]);
 
   // Set up intersection observer for infinite scroll
   useEffect(() => {
@@ -94,7 +115,7 @@ export const EnhancedNotificationSidebar: React.FC = () => {
       { threshold: 0.1 }
     );
 
-    if (lastNotificationRef.current && sortedNotifications.length > 0) {
+    if (lastNotificationRef.current && filteredNotifications.length > 0) {
       observerRef.current.observe(lastNotificationRef.current);
     }
 
@@ -103,17 +124,20 @@ export const EnhancedNotificationSidebar: React.FC = () => {
         observerRef.current.disconnect();
       }
     };
-  }, [sortedNotifications, hasMore, loading, loadMore]);
+  }, [filteredNotifications, hasMore, loading, loadMore]);
 
   const handleNotificationClick = async (id: number, isRead: boolean) => {
-    if (!isRead) {
-      await markAsRead(id);
-      refresh();
-    }
-    
-    // Navigate based on user type
+    // First navigate to reduce perceived latency
     const basePath = userProfile?.userType === 'TALENT' ? '/talent/notifications/' : '/notifications/';
     navigate(`${basePath}${id}`);
+    
+    // Then mark as read if needed (don't await or refresh to prevent flickering)
+    if (!isRead) {
+      markAsRead(id).catch(err => {
+        console.error('Error marking notification as read:', err);
+      });
+      // Note: No refresh call here - the markAsRead function already handles state updates optimistically
+    }
   };
 
   const handleMarkAllAsRead = async () => {
@@ -174,7 +198,7 @@ export const EnhancedNotificationSidebar: React.FC = () => {
           </div>
         )}
         
-        {!loading && sortedNotifications.length === 0 && (
+        {!loading && filteredNotifications.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
             <Info className="h-12 w-12 text-gray-300 mb-3" />
             <p className="text-gray-500 mb-2">
@@ -189,14 +213,16 @@ export const EnhancedNotificationSidebar: React.FC = () => {
         )}
         
         <div className="divide-y">
-          {sortedNotifications.map((notification, index) => (
+          {filteredNotifications.map((notification, index) => (
             <div
               key={notification.id}
-              ref={index === sortedNotifications.length - 1 ? lastNotificationRef : null}
+              ref={index === filteredNotifications.length - 1 ? lastNotificationRef : null}
               className={`
                 p-4 hover:bg-gray-50 cursor-pointer transition
                 ${notification.id.toString() === currentId ? 'bg-gray-100' : ''}
-                ${!notification.isRead ? 'border-l-4 border-rwanda-green pl-3' : ''}
+                ${filter === 'unread' || !notification.isRead 
+                  ? 'border-l-4 border-rwanda-green pl-3 bg-green-50' 
+                  : ''}
               `}
               onClick={() => handleNotificationClick(notification.id, notification.isRead)}
             >

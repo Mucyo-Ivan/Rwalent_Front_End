@@ -9,7 +9,8 @@ import {
   User, 
   Settings, 
   LogOut,
-  Bell
+  Bell,
+  Star
 } from "lucide-react";
 import { useNotifications } from '@/contexts/NotificationContext';
 import {
@@ -85,6 +86,12 @@ const Navbar = () => {
                         Settings
                       </Link>
                     </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to="/my-reviews" className="cursor-pointer">
+                        <Star className="h-4 w-4 mr-2" />
+                        My Reviews
+                      </Link>
+                    </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleSignOut} className="text-red-600 cursor-pointer">
                       <LogOut className="h-4 w-4 mr-2" />
@@ -121,6 +128,10 @@ const Navbar = () => {
               <>
                 <Link to="/profile" className="block py-2.5 text-gray-700 hover:text-rwanda-green font-medium" onClick={toggleMenu}>Profile</Link>
                 <Link to="/settings" className="block py-2.5 text-gray-700 hover:text-rwanda-green font-medium" onClick={toggleMenu}>Settings</Link>
+                <Link to="/my-reviews" className="flex items-center py-2.5 text-gray-700 hover:text-rwanda-green font-medium" onClick={toggleMenu}>
+                  <Star className="h-5 w-5 mr-2" />
+                  My Reviews
+                </Link>
                 <Link to="/notifications" className="flex items-center py-2.5 text-gray-700 hover:text-rwanda-green font-medium" onClick={toggleMenu}>
                   <Bell className="h-5 w-5 mr-2" />
                   Notifications

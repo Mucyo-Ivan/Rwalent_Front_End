@@ -10,6 +10,7 @@ interface UserProfile {
   userType: string;
   fullName?: string;
   id?: number;
+  photoUrl?: string;
 }
 
 interface AuthContextType {
@@ -66,6 +67,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         userType: profile.userType,
         fullName: profile.fullName,
         id: profile.id,
+        photoUrl: profile.photoUrl,
         ...(profile.userType === "TALENT" ? { 
           talentCategory: profile.category,
           registrationComplete: true
@@ -102,25 +104,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const register = async (name: string, email: string, password: string, role: "user" | "talent", talentCategory?: string) => {
-    // For demo purposes, we're just setting localStorage
-    // In a real app, this would call your API to create a user account
-    localStorage.setItem("isAuthenticated", "true");
-    
-    const userProfile: UserProfile = {
-      name,
-      email,
-      role,
-      ...(role === "talent" ? { 
-        talentCategory,
-        registrationComplete: false, // New talents need to complete registration
-        userType: "talent" // Assuming a default userType for new talents
-      } : { userType: "user" }),
-      ...(role === "talent" ? { talentCategory } : {})
-    };
-    
-    localStorage.setItem("userProfile", JSON.stringify(userProfile));
-    setUserProfile(userProfile);
-    setIsAuthenticated(true);
+    try {
+      // Call the backend API to register the user
+      if (role === "user") {
+        const response = await auth.registerRegular({
+          fullName: name,
+          email,
+          password,
+          userType: "REGULAR_USER"
+        });
+        
+        if (response && response.token) {
+          localStorage.setItem("token", response.token);
+          localStorage.setItem("isAuthenticated", "true");
+          setIsAuthenticated(true);
+          
+          // Fetch user profile after registration
+          await refreshUserProfile();
+        }
+      } else {
+        // For talents, we just store basic info initially
+        // The actual registration happens in the RegisterTalentPage component
+        const userProfile: UserProfile = {
+          name,
+          email,
+          role,
+          talentCategory,
+          registrationComplete: false,
+          userType: "TALENT"
+        };
+        
+        localStorage.setItem("userProfile", JSON.stringify(userProfile));
+        setUserProfile(userProfile);
+        setIsAuthenticated(true);
+      }
+    } catch (error) {
+      console.error("Registration error:", error);
+      throw error;
+    }
   };
 
   const logout = () => {

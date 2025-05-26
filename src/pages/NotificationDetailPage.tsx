@@ -53,11 +53,18 @@ const NotificationDetailPage: React.FC = () => {
   const location = useLocation();
   const notification = notifications.find(n => n.id === Number(id));
 
+  // Determine if we're in the talent dashboard or user dashboard
+  const isTalentDashboard = location.pathname.includes('/talent/');
+
   useEffect(() => {
     if (notification && !notification.isRead) {
-      markAsRead(notification.id).then(refresh);
+      // Mark as read without chaining refresh to prevent flickering
+      markAsRead(notification.id).catch(err => {
+        console.error('Error marking notification as read:', err);
+      });
+      // Optimistic update already applied in the markAsRead function
     }
-  }, [notification, markAsRead, refresh]);
+  }, [notification?.id, notification?.isRead, markAsRead]);
 
   const formatDate = (dateString: string) => {
     const options: Intl.DateTimeFormatOptions = { 
@@ -91,18 +98,22 @@ const NotificationDetailPage: React.FC = () => {
     );
   }
 
+  // Use different layouts for talent vs regular user contexts
   return (
-    <div className="flex-1 p-6 md:p-8">
-      <div className="mb-4">
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          onClick={() => navigate(-1)}
-          className="text-gray-600"
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" /> Back
-        </Button>
-      </div>
+    <div className={`flex-1 ${isTalentDashboard ? 'h-full' : 'p-6 md:p-8'}`}>
+      {/* Only show back button if not in talent dashboard (it already has navigation) */}
+      {!isTalentDashboard && (
+        <div className="mb-4">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => navigate(-1)}
+            className="text-gray-600"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back
+          </Button>
+        </div>
+      )}
       
       <Card className="w-full shadow-md overflow-hidden">
         <div className={`p-6 ${getNotificationBgColor(notification.notificationType)}`}>
@@ -121,10 +132,15 @@ const NotificationDetailPage: React.FC = () => {
               size="icon"
               className="text-gray-500 hover:text-red-500"
               title="Delete notification"
-              onClick={async () => {
-                await clearNotification(notification.id);
-                refresh();
-                navigate(location.pathname.startsWith('/talent') ? '/talent/notifications' : '/notifications');
+              onClick={() => {
+                // Navigate first for better UX
+                navigate(isTalentDashboard ? '/talent/notifications' : '/notifications');
+                
+                // Then clear notification without awaiting or refreshing to prevent flickering
+                clearNotification(notification.id).catch(err => {
+                  console.error('Error clearing notification:', err);
+                });
+                // No refresh call - clearNotification handles state updates optimistically
               }}
             >
               <Trash2 className="h-5 w-5" />
@@ -156,9 +172,12 @@ const NotificationDetailPage: React.FC = () => {
                   size="sm" 
                   className="mt-2 text-rwanda-green border-rwanda-green hover:bg-rwanda-green/10"
                   onClick={() => {
-                    // Navigate to booking details page if available
-                    // This is a placeholder - implement the actual navigation if needed
-                    navigate(`/bookings/${notification.relatedBookingId}`);
+                    // Navigate to the appropriate booking details page based on user type
+                    if (isTalentDashboard) {
+                      navigate(`/talent/bookings/${notification.relatedBookingId}`);
+                    } else {
+                      navigate(`/bookings/${notification.relatedBookingId}`);
+                    }
                   }}
                 >
                   View Booking Details

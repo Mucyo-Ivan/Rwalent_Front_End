@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +8,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Camera, Save } from "lucide-react";
+import { Camera, Save, X, CalendarPlus } from "lucide-react";
+import TalentReviewsSection from "@/components/reviews/TalentReviewsSection";
+import { talent } from "@/lib/api";
+import EnhancedAvatar from "@/components/ui/EnhancedAvatar";
 
 interface TalentProfile {
   fullName: string;
@@ -22,6 +26,8 @@ interface TalentProfile {
 }
 
 const TalentProfilePage = () => {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { userProfile } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [profile, setProfile] = useState<TalentProfile>({
@@ -35,22 +41,44 @@ const TalentProfilePage = () => {
     profileImage: null,
     portfolioImages: []
   });
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [talentData, setTalentData] = useState<any>(null);
+  const [talentId, setTalentId] = useState<number | null>(null);
 
+  // Fetch talent data
   useEffect(() => {
-    // In a real app, this would fetch the talent's profile from the API
-    setProfile({
-      fullName: userProfile?.name || "",
-      email: userProfile?.email || "",
-      phoneNumber: "+250 78 123 4567",
-      category: "Photographer",
-      location: "Kigali, Rwanda",
-      bio: "Professional photographer with 5 years of experience in wedding and event photography.",
-      serviceAndPricing: "Wedding Photography: RWF 500,000\nEvent Photography: RWF 300,000",
-      profileImage: null,
-      portfolioImages: []
-    });
-  }, [userProfile]);
+    const fetchTalentData = async () => {
+      if (!id) return;
+      
+      setLoading(true);
+      try {
+        // Using getById which always provides data (even mock data if real data not found)
+        const data = await talent.getById(id);
+        setTalentData(data);
+        setTalentId(data.id);
+        
+        // Update profile with talent data
+        setProfile({
+          fullName: data.fullName || data.name || "",
+          email: data.email || "",
+          phoneNumber: data.phoneNumber || "+250 78 123 4567",
+          category: data.category || "Photographer",
+          location: data.location || "Kigali, Rwanda",
+          bio: data.bio || "Professional with experience in the field.",
+          serviceAndPricing: data.serviceAndPricing || "Contact for pricing",
+          profileImage: data.photoUrl || null,
+          portfolioImages: data.portfolioImages || []
+        });
+      } catch (error) {
+        console.error('Error fetching talent data:', error);
+        toast.error("Could not load talent data");
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchTalentData();
+  }, [id]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, type: "profile" | "portfolio") => {
     const file = e.target.files?.[0];
@@ -84,23 +112,44 @@ const TalentProfilePage = () => {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-[60vh]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-rwanda-green"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Profile</h1>
-        <Button
-          onClick={() => setIsEditing(!isEditing)}
-          variant={isEditing ? "default" : "outline"}
-        >
-          {isEditing ? (
-            <>
-              <Save className="h-4 w-4 mr-2" />
-              Save Changes
-            </>
-          ) : (
-            "Edit Profile"
+        <h1 className="text-3xl font-bold">{profile.fullName}</h1>
+        <div className="flex gap-3">
+          {userProfile?.id !== talentId && (
+            <Button
+              onClick={() => navigate(`/book/${talentId}`)}
+              className="bg-rwanda-green hover:bg-rwanda-green/90 text-white"
+            >
+              <CalendarPlus className="h-4 w-4 mr-2" />
+              Book Now
+            </Button>
           )}
-        </Button>
+          {userProfile?.id === talentId && (
+            <Button
+              onClick={() => setIsEditing(!isEditing)}
+              variant={isEditing ? "default" : "outline"}
+            >
+              {isEditing ? (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  Save Changes
+                </>
+              ) : (
+                "Edit Profile"
+              )}
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -112,24 +161,28 @@ const TalentProfilePage = () => {
           <CardContent>
             <div className="flex flex-col items-center space-y-4">
               <div className="relative">
-                {profile.profileImage ? (
-                  <img
-                    src={profile.profileImage}
-                    alt="Profile"
-                    className="w-48 h-48 rounded-full object-cover"
+                <div className="relative w-48 h-48">
+                  <EnhancedAvatar
+                    user={{
+                      id: talentId || undefined,
+                      fullName: profile.fullName,
+                      photoUrl: profile.profileImage
+                    }}
+                    size="xl"
+                    className="w-48 h-48 shadow-lg"
+                    fallbackClassName="bg-rwanda-green text-white text-5xl"
                   />
-                ) : (
-                  <div className="w-48 h-48 rounded-full bg-gray-200 flex items-center justify-center">
-                    <span className="text-4xl font-bold text-gray-400">
-                      {profile.fullName.charAt(0).toUpperCase()}
-                    </span>
-                  </div>
-                )}
+                </div>
+
                 {isEditing && (
-                  <label className="absolute bottom-0 right-0 bg-white p-2 rounded-full shadow-md cursor-pointer hover:bg-gray-100">
+                  <label
+                    htmlFor="profileImage"
+                    className="absolute bottom-0 right-0 p-2 bg-rwanda-green text-white rounded-full cursor-pointer hover:bg-rwanda-green/90 transition-colors"
+                  >
                     <Camera className="h-5 w-5" />
                     <input
                       type="file"
+                      id="profileImage"
                       className="hidden"
                       accept="image/*"
                       onChange={(e) => handleImageUpload(e, "profile")}
@@ -274,6 +327,21 @@ const TalentProfilePage = () => {
                 </label>
               )}
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Reviews Section */}
+        <Card className="md:col-span-3">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-2xl">Reviews & Ratings</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {talentId && (
+              <TalentReviewsSection 
+                talentId={talentId} 
+                talentName={profile.fullName} 
+              />
+            )}
           </CardContent>
         </Card>
       </div>

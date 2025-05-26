@@ -207,27 +207,41 @@ export const auth = {
     });
     return response.data;
   },
-  // New function to upload profile picture
+  // Function to upload profile picture
   uploadProfilePicture: async (file: File): Promise<{ photoUrl: string }> => {
+    console.log('Uploading profile picture file...');
     const formData = new FormData();
     formData.append('file', file);
     
-    const response = await api.post('/api/auth/upload-profile-picture', formData, {
+    const response = await api.post('/api/auth/profile/picture', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
-      transformRequest: [(data) => data],
+      transformRequest: [(data) => data], // Prevent axios from modifying FormData
     });
-    return response.data;
+    // The backend returns the URL string directly, so we wrap it in an object
+    return { photoUrl: response.data };
   },
-  // New function to update profile with photo
-  updateProfileWithPhoto: async (profileData: FormData): Promise<Profile> => {
-    const response = await api.put('/api/auth/profile', profileData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-      transformRequest: [(data) => data],
-    });
+  
+  // Function to update profile with photo URL (after photo is uploaded separately)
+  updateProfileWithPhoto: async (profileData: any): Promise<Profile> => {
+    console.log('Updating profile with photo URL...');
+    // First upload the photo if it exists as a File object
+    if (profileData.profilePicture && profileData.profilePicture instanceof File) {
+      try {
+        const file = profileData.profilePicture;
+        const uploadResult = await auth.uploadProfilePicture(file);
+        // Replace the File with the URL returned from the server
+        profileData.photoUrl = uploadResult.photoUrl;
+        delete profileData.profilePicture; // Remove the file object
+      } catch (error) {
+        console.error('Error uploading profile picture:', error);
+        // Continue with the update even if the picture upload fails
+      }
+    }
+    
+    // Now send the regular JSON data (no FormData)
+    const response = await api.put('/api/auth/profile', profileData);
     return response.data;
   },
   search: async (searchTerm: string): Promise<SearchResponse> => {

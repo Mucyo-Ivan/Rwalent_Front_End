@@ -110,18 +110,25 @@ const RegisterTalentPage = () => {
       const response = await auth.registerTalent(talentRegistrationFormData);
       
       if (response) {
-      localStorage.removeItem('talentRegistrationData');
-      setSuccess("Talent profile created successfully! Redirecting...");
-      toast.success("Welcome to Rwalent! Your talent profile has been created.");
+        localStorage.removeItem('talentRegistrationData');
+        setSuccess("Talent profile created successfully! Redirecting...");
+        toast.success("Welcome to Rwalent! Your talent profile has been created.");
         
-        // Store the token if it's in the response
+        // Store the token and set authentication state
         if (response.token) {
           localStorage.setItem('token', response.token);
+          localStorage.setItem("isAuthenticated", "true");
+          
+          // Import the refreshUserProfile function from AuthContext
+          const { refreshUserProfile } = useAuth();
+          
+          // Refresh the user profile to ensure we have the latest data
+          await refreshUserProfile();
         }
         
-      setTimeout(() => {
+        setTimeout(() => {
           navigate("/talent/dashboard"); 
-      }, 1500);
+        }, 1500);
       }
     } catch (err) {
       console.error("Registration error:", err);

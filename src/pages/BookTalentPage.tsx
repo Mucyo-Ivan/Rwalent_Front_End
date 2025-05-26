@@ -8,7 +8,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
 import { talent as talentApiFunctions, booking as bookingApiFunctions, Profile as TalentProfile, BookingRequestPayload } from "@/lib/api";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import EnhancedAvatar from "@/components/ui/EnhancedAvatar";
 import { CalendarIcon, Briefcase, MapPin, ArrowLeft, Send, Clock, DollarSign, ListChecks, MessageSquare } from "lucide-react";
 import { format, parseISO, isValid } from "date-fns";
 
@@ -165,20 +165,12 @@ const BookTalentPage = () => {
         <div className="bg-white shadow-xl rounded-lg overflow-hidden">
           <div className="bg-gradient-to-r from-rwanda-green to-rwanda-blue p-6 sm:p-8 text-white">
             <div className="flex flex-col sm:flex-row items-center sm:space-x-6 space-y-4 sm:space-y-0">
-              <Avatar className="h-24 w-24 sm:h-28 sm:w-28 border-4 border-white shadow-md">
-                <AvatarImage 
-                  src={`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/talents/${talent.id}/picture`}
-                  alt={talent.fullName || "Talent"} 
-                  onError={(e) => {
-                    console.log('Image failed to load, using fallback');
-                    // Let the AvatarFallback component handle the error
-                    e.currentTarget.style.display = 'none';
-                  }}
-                />
-                <AvatarFallback className="text-3xl bg-white/20 text-white">
-                  {getInitials(talent.fullName)}
-                </AvatarFallback>
-              </Avatar>
+              <EnhancedAvatar
+                user={talent}
+                size="xl"
+                className="h-24 w-24 sm:h-28 sm:w-28 border-4 border-white shadow-md"
+                fallbackClassName="text-3xl bg-white/20 text-white"
+              />
               <div className="text-center sm:text-left">
                 <h1 className="text-3xl font-bold tracking-tight">{talent.fullName}</h1>
                 {talent.category && 

@@ -11,7 +11,7 @@ import {
   X,
   ChevronDown
 } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import EnhancedAvatar from "@/components/ui/EnhancedAvatar";
 import { useAuth } from "@/contexts/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNotifications } from "@/contexts/NotificationContext";
@@ -87,13 +87,16 @@ const TalentLayout = ({ children }: TalentLayoutProps) => {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center w-full space-x-3 p-2 rounded-lg hover:bg-gray-100 transition-colors">
-                  <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
-                    <div className="h-8 w-8 rounded-full bg-white flex items-center justify-center border-2 border-rwanda-green">
-                      <span className="text-rwanda-green font-bold text-xl">
-                        {userProfile?.name.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                  </div>
+                  <EnhancedAvatar
+                    user={{
+                      id: userProfile?.id,
+                      fullName: userProfile?.name || userProfile?.fullName || "",
+                      photoUrl: userProfile?.photoUrl
+                    }}
+                    size="md"
+                    className="border-2 border-rwanda-green"
+                    fallbackClassName="bg-rwanda-green text-white"
+                  />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900 truncate">
                       {userProfile?.name}

@@ -2,6 +2,7 @@ import { Outlet } from "react-router-dom";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useNotifications } from "@/contexts/NotificationContext";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { 
@@ -11,12 +12,14 @@ import {
   Settings, 
   LogOut,
   Menu,
-  X
+  X,
+  Bell
 } from "lucide-react";
 
 const TalentLayout = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { logout, userProfile } = useAuth();
+  const { unreadCount } = useNotifications();
   const navigate = useNavigate();
 
   const handleSignOut = () => {
@@ -83,6 +86,20 @@ const TalentLayout = () => {
             >
               <Calendar className="h-5 w-5" />
               <span>Bookings</span>
+            </Link>
+            <Link
+              to="/talent/notifications"
+              className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-100 text-gray-700 hover:text-rwanda-green"
+            >
+              <div className="relative">
+                <Bell className="h-5 w-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </div>
+              <span>Notifications</span>
             </Link>
             <Link
               to="/talent-profile"

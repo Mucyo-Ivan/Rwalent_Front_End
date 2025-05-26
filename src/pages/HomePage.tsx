@@ -6,7 +6,7 @@ import CategoryCard from "@/components/ui/CategoryCard";
 import { auth, talent, Talent, SearchResponse } from "@/lib/api";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import EnhancedAvatar from "@/components/ui/EnhancedAvatar";
 
 interface Category {
   id: number;
@@ -148,12 +148,12 @@ const HomePage = () => {
                   <div key={talent.id} className="bg-white border border-gray-200 rounded-lg shadow-md overflow-hidden flex flex-col">
                     <div className="p-5">
                     <div className="flex items-center mb-4">
-                        <Avatar className="h-12 w-12 rounded-full">
-                          <AvatarImage src={talent.photoUrl} alt={talent.fullName} />
-                          <AvatarFallback className="bg-rwanda-green text-white">
-                            {talent.fullName ? talent.fullName.charAt(0).toUpperCase() : 'T'}
-                          </AvatarFallback>
-                        </Avatar>
+                        <EnhancedAvatar
+                          user={talent}
+                          size="md"
+                          className="h-12 w-12"
+                          fallbackClassName="bg-rwanda-green text-white"
+                        />
                         <div className="ml-4">
                           <h4 className="font-semibold text-lg text-gray-800">{talent.fullName}</h4>
                           <p className="text-sm text-rwanda-blue">{talent.category ? talent.category.replace('_', ' ') : 'Talent'}</p>
@@ -213,12 +213,12 @@ const HomePage = () => {
                     <div key={talent.id} className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden flex flex-col">
                       <div className="p-3">
                       <div className="flex items-center mb-2">
-                          <Avatar className="h-10 w-10 rounded-full">
-                            <AvatarImage src={talent.photoUrl} alt={talent.fullName} />
-                            <AvatarFallback className="bg-rwanda-blue text-white text-xs">
-                              {talent.fullName ? talent.fullName.charAt(0).toUpperCase() : 'T'}
-                            </AvatarFallback>
-                          </Avatar>
+                          <EnhancedAvatar
+                            user={talent}
+                            size="sm"
+                            className="h-10 w-10"
+                            fallbackClassName="bg-rwanda-blue text-white text-xs"
+                          />
                           <div className="ml-3">
                             <h4 className="font-medium text-sm text-gray-800">{talent.fullName}</h4>
                             <p className="text-xs text-gray-500">{talent.location || "Rwanda"}</p>

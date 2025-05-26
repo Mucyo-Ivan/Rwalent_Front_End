@@ -30,6 +30,7 @@ import TalentLayout from "./components/layouts/TalentLayout";
 import UserNotificationsPage from "./pages/UserNotificationsPage";
 import TalentNotificationsPage from "./pages/TalentNotificationsPage";
 import UserSettings from "./pages/UserSettings";
+import UserReviewsPage from "./pages/UserReviewsPage";
 import { NotificationProvider } from "./contexts/NotificationContext";
 
 const queryClient = new QueryClient();
@@ -70,6 +71,7 @@ const App = () => (
               <Route path="/edit-profile" element={<EditProfilePage />} />
               <Route path="/settings" element={<UserSettings />} />
               <Route path="/notifications/*" element={<UserNotificationsPage />} />
+              <Route path="/my-reviews" element={<UserReviewsPage />} />
               </Route>
               
               {/* Talent Dashboard Routes (Protected implicitly by login flow leading here) */}

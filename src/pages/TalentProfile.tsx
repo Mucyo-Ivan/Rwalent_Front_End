@@ -44,7 +44,7 @@ interface UpdateProfilePayload {
 
 const TalentProfile = () => {
   const navigate = useNavigate();
-  const { userProfile, updateUserProfile } = useAuth();
+  const { userProfile, refreshUserProfile } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -113,50 +113,49 @@ const TalentProfile = () => {
 
     setIsSaving(true);
     try {
-      let updatedProfileData;
-
-    if (newPhotoFile) {
-        // If there's a new photo, use the updateProfileWithPhoto endpoint
-        const formData = new FormData();
-        formData.append('fullName', editableProfile.fullName || profile.fullName);
-        formData.append('email', editableProfile.email || profile.email);
-        formData.append('phoneNumber', editableProfile.phoneNumber || '');
-        formData.append('location', editableProfile.location || '');
-        formData.append('bio', editableProfile.bio || '');
-        formData.append('serviceAndPricing', editableProfile.serviceAndPricing || '');
-        formData.append('category', editableProfile.category || '');
-        formData.append('photoFile', newPhotoFile);
-
-        updatedProfileData = await auth.updateProfileWithPhoto(formData);
-      } else {
-        // If no new photo, use the regular update endpoint
-    const payload: UpdateProfilePayload = {
-      fullName: editableProfile.fullName || profile.fullName,
-      email: editableProfile.email || profile.email,
-      phoneNumber: editableProfile.phoneNumber,
-      location: editableProfile.location,
-          bio: editableProfile.bio,
-          serviceAndPricing: editableProfile.serviceAndPricing,
-          category: editableProfile.category,
-    };
-
-        updatedProfileData = await auth.updateProfile(payload);
+      // Prepare the profile data
+      const profileUpdateData: UpdateProfilePayload & { photoUrl?: string } = {
+        fullName: editableProfile.fullName || profile.fullName,
+        email: editableProfile.email || profile.email,
+        phoneNumber: editableProfile.phoneNumber || '',
+        location: editableProfile.location || '',
+        bio: editableProfile.bio || '',
+        serviceAndPricing: editableProfile.serviceAndPricing || '',
+        category: editableProfile.category || ''
+      };
+      
+      if (newPhotoFile) {
+        // If there's a new photo, use the updated approach
+        // First, upload just the profile picture file
+        try {
+          const uploadResult = await auth.uploadProfilePicture(newPhotoFile);
+          // Add the photo URL to the profile data
+          profileUpdateData.photoUrl = uploadResult.photoUrl;
+          console.log('Profile picture uploaded successfully:', uploadResult.photoUrl);
+        } catch (uploadError) {
+          console.error('Failed to upload profile picture:', uploadError);
+          toast.error('Failed to upload profile picture, but will continue updating profile info');
+          // Continue with the update even if the picture upload fails
+        }
       }
+      
+      // Now update the profile with the new data (including photo URL if successful)
+      const updatedProfileData = await auth.updateProfile(profileUpdateData);
 
-      setProfile(updatedProfileData); 
+      setProfile(updatedProfileData);
       setEditableProfile({
-         fullName: updatedProfileData.fullName,
-         email: updatedProfileData.email,
-         phoneNumber: updatedProfileData.phoneNumber,
-         location: updatedProfileData.location,
-         bio: updatedProfileData.bio, 
+        fullName: updatedProfileData.fullName,
+        email: updatedProfileData.email,
+        phoneNumber: updatedProfileData.phoneNumber,
+        location: updatedProfileData.location,
+        bio: updatedProfileData.bio,
         serviceAndPricing: updatedProfileData.serviceAndPricing,
         category: updatedProfileData.category,
       });
 
       // Update the global user profile
-      if (updateUserProfile) {
-        updateUserProfile(updatedProfileData);
+      if (refreshUserProfile) {
+        refreshUserProfile();
       }
 
       // Clear the photo file states
