@@ -9,7 +9,9 @@ import {
   Trash2, 
   Check,
   X,
-  Filter
+  Filter,
+  RefreshCcw,
+  Bell
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -60,7 +62,8 @@ export const EnhancedNotificationSidebar: React.FC = () => {
     refresh, 
     loadMore, 
     hasMore, 
-    loading 
+    loading,
+    error
   } = useNotifications();
   const { userProfile } = useAuth();
   const navigate = useNavigate();
@@ -160,6 +163,14 @@ export const EnhancedNotificationSidebar: React.FC = () => {
             <Button 
               variant="ghost" 
               size="icon" 
+              title="Refresh notifications"
+              onClick={refresh}
+            >
+              <RefreshCcw className="h-5 w-5" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon" 
               title="Mark all as read"
               onClick={handleMarkAllAsRead}
               disabled={unreadCount === 0}
@@ -193,22 +204,28 @@ export const EnhancedNotificationSidebar: React.FC = () => {
       {/* Notifications List */}
       <div className="flex-1 overflow-y-auto">
         {loading && notifications.length === 0 && (
-          <div className="flex justify-center items-center p-6">
+          <div className="flex justify-center items-center p-4">
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-rwanda-green"></div>
+            <span className="ml-2 text-gray-500">Loading notifications...</span>
           </div>
         )}
-        
-        {!loading && filteredNotifications.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
-            <Info className="h-12 w-12 text-gray-300 mb-3" />
-            <p className="text-gray-500 mb-2">
-              {filter === 'all' ? 'No notifications yet' : 'No unread notifications'}
-            </p>
-            {filter === 'unread' && (
-              <Button variant="outline" size="sm" onClick={() => setFilter('all')}>
-                View all notifications
-              </Button>
-            )}
+        {error && !loading && notifications.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-6 px-4 text-center">
+            <p className="text-red-500">Failed to load notifications</p>
+            <Button 
+              variant="outline" 
+              className="mt-2" 
+              onClick={refresh}
+              size="sm"
+            >
+              Try again
+            </Button>
+          </div>
+        )}
+        {!loading && !error && notifications.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
+            <Bell className="h-10 w-10 text-gray-300 mb-2" />
+            <p className="text-gray-500">No notifications yet</p>
           </div>
         )}
         

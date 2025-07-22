@@ -46,6 +46,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ThemeSelector } from "@/components/ui/theme-selector";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import api from "@/lib/api";
 
 interface TalentSettings {
   email: string;
@@ -152,13 +153,47 @@ const TalentSettingsPage = () => {
     bookingUpdates: true,
     marketing: false
   });
-
   const [privacy, setPrivacy] = useState({
     profileVisibility: true,
     showContactInfo: true,
     showReviews: true,
     showEarnings: false
   });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    setError(null);
+    api.get('/api/talent/settings')
+      .then(res => {
+        const data = res.data;
+        if (data.notifications) setNotifications(data.notifications);
+        if (data.privacy) setPrivacy(data.privacy);
+      })
+      .catch(err => {
+        setError("Could not load settings. Please try refreshing.");
+        toast.error("Failed to load settings.");
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleSave = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      await api.put('/api/talent/settings', {
+        notifications,
+        privacy
+      });
+      toast.success("Settings saved successfully!");
+    } catch (err) {
+      setError("Failed to save settings. Please try again.");
+      toast.error("Failed to save settings. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSignOut = () => {
     console.log("Signing out from settings page...");
@@ -421,15 +456,15 @@ const TalentSettingsPage = () => {
 
       <div className="flex justify-end mt-8">
         <Button
-          onClick={() => {
-            toast.success("Settings saved successfully!");
-          }}
+          onClick={handleSave}
           className="bg-rwanda-green hover:bg-rwanda-green/90 px-8 py-2 text-lg font-semibold"
+          disabled={loading}
         >
           {Save && <Save className="h-5 w-5 mr-2" />}
-          Save Changes
+          {loading ? 'Saving...' : 'Save Changes'}
         </Button>
       </div>
+      {error && <div className="text-red-600 text-center mt-4">{error}</div>}
     </div>
   );
 };

@@ -218,10 +218,23 @@ function useApiLock() {
   return { acquire, release, isLocked: () => lockRef.current };
 }
 
+// Helper for retry logic with exponential backoff
+async function retryWithBackoff<T>(fn: () => Promise<T>, retries = 3, delay = 500): Promise<T> {
+  try {
+    return await fn();
+  } catch (err) {
+    if (retries <= 0) throw err;
+    await new Promise(res => setTimeout(res, delay));
+    return retryWithBackoff(fn, retries - 1, delay * 2);
+  }
+}
+
 export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(notificationReducer, initialState);
   const fetchLock = useApiLock();
   
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+
   // Convert cache to sorted array for consumers
   const notifications = state.displayOrder
     .map(id => state.cache[id])
@@ -229,6 +242,10 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
 
   // Fetch notifications with pagination support
   const fetchNotifications = useCallback(async (pageNum = 0, forceRefresh = false) => {
+    if (!token) {
+      dispatch({ type: 'FETCH_ERROR', payload: 'Not authenticated. Please sign in.' });
+      return;
+    }
     // Skip if already fetching or if fetched recently (unless forced)
     if (!forceRefresh) {
       const timeSinceLastFetch = Date.now() - state.lastFetched;
@@ -246,7 +263,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     }
     
     try {
-      const data = await api.getUserNotifications(pageNum);
+      const data = await retryWithBackoff(() => api.getUserNotifications(pageNum));
       dispatch({
         type: 'FETCH_SUCCESS',
         payload: {
@@ -273,12 +290,12 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     } finally {
       fetchLock.release();
     }
-  }, [state.lastFetched]);
+  }, [state.lastFetched, token]);
 
   // Fetch unread count
   const fetchUnreadCount = useCallback(async () => {
     try {
-      const count = await api.getUnreadCount();
+      const count = await retryWithBackoff(() => api.getUnreadCount());
       dispatch({ type: 'SET_UNREAD_COUNT', payload: count });
     } catch (error) {
       console.error('Failed to fetch unread count:', error);
@@ -315,8 +332,8 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     dispatch({ type: 'MARK_AS_READ_START', payload: id });
     
     try {
-      // Make API call - only once
-      await api.markAsRead(id);
+      // Make API call - only once, with retry
+      await retryWithBackoff(() => api.markAsRead(id));
       dispatch({ type: 'MARK_AS_READ_SUCCESS', payload: id });
     } catch (error) {
       console.error('Failed to mark notification as read:', error);
@@ -333,8 +350,8 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     dispatch({ type: 'REMOVE_NOTIFICATION', payload: id });
     
     try {
-      // Make API call
-      await api.clearNotification(id);
+      // Make API call with retry
+      await retryWithBackoff(() => api.clearNotification(id));
     } catch (error) {
       console.error('Failed to clear notification:', error);
       // Refresh on error to reset state
@@ -349,8 +366,8 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     dispatch({ type: 'CLEAR_ALL' });
     
     try {
-      // Make API call
-      await api.clearAllNotifications();
+      // Make API call with retry
+      await retryWithBackoff(() => api.clearAllNotifications());
     } catch (error) {
       console.error('Failed to clear all notifications:', error);
       // Refresh on error to reset state
@@ -362,7 +379,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
   // Load more notifications for pagination
   const loadMore = useCallback(async () => {
     if (state.hasMore && !state.loading && !fetchLock.isLocked()) {
-      await fetchNotifications(state.currentPage + 1);
+      await retryWithBackoff(() => fetchNotifications(state.currentPage + 1));
     }
   }, [fetchNotifications, state.hasMore, state.loading, state.currentPage]);
 

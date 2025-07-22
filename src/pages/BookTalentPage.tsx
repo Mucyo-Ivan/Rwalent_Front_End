@@ -7,27 +7,33 @@ import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
-import { talent as talentApiFunctions, booking as bookingApiFunctions, Profile as TalentProfile, BookingRequestPayload } from "@/lib/api";
+import { talent as talentApiFunctions, Profile as TalentProfile } from "@/lib/api";
 import EnhancedAvatar from "@/components/ui/EnhancedAvatar";
 import { CalendarIcon, Briefcase, MapPin, ArrowLeft, Send, Clock, DollarSign, ListChecks, MessageSquare } from "lucide-react";
 import { format, parseISO, isValid } from "date-fns";
+import { useAuth } from "@/contexts/AuthContext";
 
 const BookTalentPage = () => {
   const { talentId } = useParams<{ talentId: string }>();
   const navigate = useNavigate();
+  const { userProfile, loading: authLoading } = useAuth();
 
   const [talent, setTalent] = useState<TalentProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Restore booking form state
   const [bookingDate, setBookingDate] = useState<Date | undefined>(undefined);
   const [bookingTime, setBookingTime] = useState<string>("18:30");
-  const [eventLocation, setEventLocation] = useState("");
+  const [eventLocation, setEventLocation] = useState<string>("");
   const [durationMinutes, setDurationMinutes] = useState<string>("180");
   const [agreedPrice, setAgreedPrice] = useState<string>("");
-  const [notes, setNotes] = useState("");
-  const [eventRequirements, setEventRequirements] = useState("");
+  const [notes, setNotes] = useState<string>("");
+  const [eventRequirements, setEventRequirements] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // ERASED: All booking API client imports, state, and logic
+  // TODO: Re-implement booking request integration
 
   useEffect(() => {
     const loadTalentDetails = async () => {
@@ -67,77 +73,19 @@ const BookTalentPage = () => {
     loadTalentDetails();
   }, [talentId]);
 
-  const handleBookingSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!talentId || !talent) {
-        toast.error("Talent information is missing. Cannot create booking.");
-        return;
-    }
-    if (!bookingDate) {
-      toast.error("Please select a booking date.");
-      return;
-    }
-    if (!eventLocation.trim()) {
-      toast.error("Please provide the event/service location.");
-      return;
-    }
-    const numDurationMinutes = parseInt(durationMinutes, 10);
-    if (isNaN(numDurationMinutes) || numDurationMinutes <= 0) {
-      toast.error("Please enter a valid duration in minutes (e.g., 120 for 2 hours).");
-      return;
-    }
-    if (!notes.trim()) {
-      toast.error("Please provide notes or project details.");
-      return;
-    }
+  // ERASED: All booking API client imports, state, and logic
+  // TODO: Re-implement booking request integration
 
-    const [hours, minutes] = bookingTime.split(':').map(Number);
-    const combinedBookingDateTime = new Date(bookingDate);
-    combinedBookingDateTime.setHours(hours, minutes, 0, 0);
-
-    if (!isValid(combinedBookingDateTime)) {
-        toast.error("Invalid date or time selected.");
-        return;
-    }
-
-    const payload: BookingRequestPayload = {
-      bookingDate: combinedBookingDateTime.toISOString(), 
-      durationMinutes: numDurationMinutes,
-      notes: notes,
-      eventLocation: eventLocation,
-      agreedPrice: agreedPrice ? parseFloat(agreedPrice) : null,
-      eventRequirements: eventRequirements.trim() || null,
-    };
-
-    setIsSubmitting(true);
-    try {
-      console.log(`Submitting booking request for talent ID ${talent.id} with payload:`, payload);
-      const response = await bookingApiFunctions.createBookingRequest(talent.id, payload);
-      toast.success(`Booking request (ID: ${response.id}) for ${talent.fullName} sent successfully! Status: ${response.status}`);
-      setTimeout(() => {
-        setBookingDate(undefined);
-        setBookingTime("18:30");
-        setEventLocation("");
-        setDurationMinutes("180");
-        setAgreedPrice("");
-        setNotes("");
-        setEventRequirements("");
-      }, 2000); 
-    } catch (err: any) {
-      console.error("Booking submission error:", err);
-      const errorMsg = err.response?.data?.message || err.message || "Failed to send booking request. Please try again.";
-      toast.error(errorMsg);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-  
   const getInitials = (name: string | undefined | null): string => {
     if (!name) return "N/A";
     const parts = name.split(' ');
     if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
     return parts[0].charAt(0).toUpperCase() + parts[parts.length - 1].charAt(0).toUpperCase();
   };
+
+  if (authLoading) {
+    return <div className="min-h-screen flex items-center justify-center text-lg text-gray-600">Loading authentication...</div>;
+  }
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center p-4 text-lg text-gray-600">Loading talent information...</div>;
@@ -185,7 +133,7 @@ const BookTalentPage = () => {
             </div>
           </div>
 
-          <form onSubmit={handleBookingSubmit} className="p-6 sm:p-8 space-y-6">
+          <form onSubmit={(e) => { e.preventDefault(); toast.info("Booking functionality is currently disabled."); }} className="p-6 sm:p-8 space-y-6">
             <h2 className="text-2xl font-semibold text-gray-800">
               Request a Booking with {talent.fullName || "this Talent"}
             </h2>

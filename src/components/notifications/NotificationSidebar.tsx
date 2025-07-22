@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { X, CheckCircle, XCircle, Mail, Info, MessageCircle } from 'lucide-react';
+import { X, CheckCircle, XCircle, Mail, Info, MessageCircle, RefreshCcw, Check } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 const getNotificationIcon = (type: string) => {
   switch (type) {
@@ -17,7 +18,7 @@ const getNotificationIcon = (type: string) => {
 };
 
 export const NotificationSidebar: React.FC = () => {
-  const { notifications, markAsRead, clearAll, refresh, loadMore, hasMore, loading } = useNotifications();
+  const { notifications, markAsRead, clearAll, refresh, loadMore, hasMore, loading, error } = useNotifications();
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -82,14 +83,21 @@ export const NotificationSidebar: React.FC = () => {
           </button>
         )}
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold">Notifications</h2>
-          {notifications.length > 0 && (
-            <button onClick={async () => { await clearAll(); refresh(); }} className="text-xs text-red-500 hover:underline">Clear all</button>
-          )}
+          <span className="font-semibold text-lg">Notifications</span>
+          <div className="flex gap-2">
+            <Button variant="ghost" size="icon" onClick={refresh} title="Refresh notifications">
+              <RefreshCcw className="h-5 w-5" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={async () => { for (const n of notifications.filter(n => !n.isRead)) await markAsRead(n.id); refresh(); }} title="Mark all as read" disabled={notifications.filter(n => !n.isRead).length === 0}>
+              <Check className="h-5 w-5" />
+            </Button>
+          </div>
         </div>
         
         <ul className="space-y-2">
-          {sorted.length === 0 && <li className="text-gray-500">No notifications</li>}
+          {loading && <li className="text-center text-gray-500 py-2">Loading notifications...</li>}
+          {error && !loading && <li className="text-center text-red-500 py-2">Failed to load notifications. <Button variant="outline" size="sm" onClick={refresh}>Retry</Button></li>}
+          {!loading && !error && sorted.length === 0 && <li className="text-gray-500">No notifications</li>}
           {sorted.map((n, index) => (
             <li
               key={n.id}

@@ -8,9 +8,10 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
   CalendarCheck, User, DollarSign, AlertCircle, Clock, Check, X, 
   Info, CheckCircle, Calendar, MapPin, Music, Star, Phone, Mail,
-  MessageSquare, FileText, CreditCard, Zap, Flame, CheckSquare, RotateCcw
+  MessageSquare, FileText, CreditCard, Zap, Flame, CheckSquare, RotateCcw, Timeline
 } from 'lucide-react';
-import { booking, BookingResponse } from '@/lib/api';
+// ERASED: All booking API client imports, state, and logic
+// TODO: Re-implement bookings integration
 import { format, parseISO, isAfter, isBefore, addDays } from 'date-fns';
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
@@ -18,6 +19,8 @@ import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useAuth } from "@/contexts/AuthContext";
+import { useSpring, animated } from '@react-spring/web';
 
 const getStatusBadgeVariant = (status: string): 'default' | 'secondary' | 'outline' | 'destructive' => {
   switch (status?.toUpperCase()) {
@@ -38,283 +41,518 @@ const getStatusBadgeVariant = (status: string): 'default' | 'secondary' | 'outli
 const POLLING_INTERVAL = 15000;
 
 const TalentBookingsPage = () => {
-  const [pendingBookings, setPendingBookings] = useState<BookingResponse[]>([]);
+  const { userProfile, loading: authLoading, isAuthenticated, refreshUserProfile } = useAuth();
+
+  // ERASED: All booking API client imports, state, and logic
+  // TODO: Re-implement bookings integration
+  const [pendingBookings, setPendingBookings] = useState<any[]>([]); // Placeholder
+  const [upcomingBookings, setUpcomingBookings] = useState<any[]>([]); // Placeholder
+  const [pastBookings, setPastBookings] = useState<any[]>([]); // Placeholder
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<Record<number, boolean>>({});
+  const [activeTab, setActiveTab] = useState<'pending' | 'upcoming' | 'past'>('pending');
+  const [selectedBooking, setSelectedBooking] = useState<any | null>(null); // Placeholder
+  const [searchTerm, setSearchTerm] = useState('');
 
-  const fetchPendingBookings = useCallback(async (isInitialLoad = false) => {
+  // ERASED: All booking API client imports, state, and logic
+  // TODO: Re-implement bookings integration
+  const fetchBookings = useCallback(async (isInitialLoad = false) => {
+    if (!userProfile?.id) {
+      console.warn("User profile not loaded, cannot fetch bookings.");
+      if (isInitialLoad) {
+        setError("Please log in as a talent to view your bookings.");
+        setLoading(false);
+      }
+      return;
+    }
     if (isInitialLoad) setLoading(true);
     try {
-      // Fetch real booking data from the backend API
-      const data = await booking.getPendingTalentBookings();
-      
-      // Process the data to ensure all required fields exist
-      const processedData = data.map(booking => ({
-        ...booking,
-        // Ensure essential fields exist to prevent UI errors
-        createdAt: booking.createdAt || new Date().toISOString(),
-        userName: booking.userName || 'Client',
-        eventLocation: booking.eventLocation || 'No location specified',
-        bookingDate: booking.bookingDate || new Date().toISOString(),
-        durationMinutes: booking.durationMinutes || 60
-      }));
-      
-      setPendingBookings(processedData);
+      // Fetch pending bookings
+      // ERASED: All booking API client imports, state, and logic
+      // TODO: Re-implement bookings integration
+      setPendingBookings([]); // Placeholder
+      // Fetch all bookings for this talent
+      // ERASED: All booking API client imports, state, and logic
+      // TODO: Re-implement bookings integration
+      const allTalentBookings = []; // Placeholder
+      // Split into upcoming and past
+      const now = new Date();
+      const upcoming = allTalentBookings.filter(b => b.status === 'CONFIRMED' && new Date(b.bookingDate) > now);
+      const past = allTalentBookings.filter(b => b.status === 'COMPLETED' || (b.status === 'CONFIRMED' && new Date(b.bookingDate) <= now));
+      setUpcomingBookings(upcoming);
+      setPastBookings(past);
       if (isInitialLoad) setError(null);
-      
-      // Log success for debugging
-      console.log(`Successfully fetched ${processedData.length} pending booking requests`);
-    } catch (err) {
-      console.error('Error fetching pending bookings:', err);
-      // Only show error message on initial load to avoid spamming the user
+    } catch (err: any) {
+      console.error('Error fetching bookings:', err);
       if (isInitialLoad) {
-        setError("Failed to load booking requests. Please try refreshing the page.");
-        toast.error("Could not load pending bookings");
+        const errorMsg = err.response?.data?.detail || err.message || "Failed to load booking requests. Please try refreshing the page.";
+        setError(errorMsg);
+        toast.error(errorMsg);
       }
     } finally {
       if (isInitialLoad) setLoading(false);
     }
-  }, []);
+  }, [userProfile?.id]);
 
   useEffect(() => {
-    fetchPendingBookings(true);
-
+    if (!authLoading && userProfile?.id) {
+      fetchBookings(true);
     const intervalId = setInterval(() => {
-      fetchPendingBookings(false);
+        fetchBookings(false);
     }, POLLING_INTERVAL);
-
     return () => clearInterval(intervalId);
-  }, [fetchPendingBookings]);
+    }
+  }, [authLoading, userProfile?.id, fetchBookings]);
 
+  // ERASED: All booking API client imports, state, and logic
+  // TODO: Re-implement bookings integration
   const handleApprove = async (bookingId: number) => {
     setActionLoading(prev => ({ ...prev, [bookingId]: true }));
     try {
-      await booking.approveBooking(bookingId);
-      setPendingBookings(prev => prev.filter(b => b.id !== bookingId));
+      // ERASED: All booking API client imports, state, and logic
+      // TODO: Re-implement bookings integration
       toast.success("Booking request approved successfully");
+      fetchBookings(false);
     } catch (err) {
+      console.error("Error approving booking:", err);
       toast.error("Failed to approve booking. Please try again.");
     } finally {
       setActionLoading(prev => ({ ...prev, [bookingId]: false }));
     }
   };
 
+  // ERASED: All booking API client imports, state, and logic
+  // TODO: Re-implement bookings integration
   const handleReject = async (bookingId: number) => {
     setActionLoading(prev => ({ ...prev, [bookingId]: true }));
     try {
-      await booking.rejectBooking(bookingId);
-      setPendingBookings(prev => prev.filter(b => b.id !== bookingId));
+      // ERASED: All booking API client imports, state, and logic
+      // TODO: Re-implement bookings integration
       toast.success("Booking request declined");
+      fetchBookings(false);
     } catch (err) {
+      console.error("Error rejecting booking:", err);
       toast.error("Failed to decline booking. Please try again.");
     } finally {
       setActionLoading(prev => ({ ...prev, [bookingId]: false }));
     }
   };
 
-  return (
-    <div className="container mx-auto py-8 max-w-7xl">
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-            <Calendar className="h-8 w-8 mr-3 text-rwanda-green" />
-            My Bookings
-          </h1>
-          <p className="text-gray-600 mt-1">Manage all your booking requests and upcoming performances</p>
-        </div>
-        <Button 
-          onClick={() => fetchPendingBookings(true)}
-          className="mt-4 md:mt-0 bg-rwanda-green hover:bg-rwanda-green/90 text-white"
-        >
-          <RotateCcw className="h-4 w-4 mr-2" />
-          Refresh Bookings
-        </Button>
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-rwanda-green mb-6"></div>
+        <p className="text-lg text-gray-600">Loading your profile...</p>
       </div>
+    );
+  }
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center">
+        <img src="/login-illustration.svg" alt="Login required" className="w-40 h-40 mb-6 opacity-80" />
+        <p className="text-xl font-semibold text-gray-700 mb-2">Please log in to view your bookings.</p>
+        <Button onClick={() => window.location.href = '/signin'} className="bg-rwanda-green hover:bg-rwanda-green/90 text-white px-8 py-3 text-lg font-semibold">Log In</Button>
+      </div>
+    );
+  }
+  if (!userProfile?.id) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-rwanda-green mb-6"></div>
+        <p className="text-lg text-gray-600 mb-4">Loading your profile...</p>
+        <Button onClick={refreshUserProfile} className="bg-rwanda-green hover:bg-rwanda-green/90 text-white px-8 py-3 text-lg font-semibold">Refresh</Button>
+      </div>
+    );
+  }
 
-      <Tabs defaultValue="pending" className="w-full">
-        <TabsList className="mb-8 w-full justify-start border-b pb-0 pt-0 overflow-x-auto">
-          <TabsTrigger value="pending" className="relative h-9 rounded-none border-b-2 border-b-transparent bg-transparent px-4 pb-3 pt-2 font-semibold text-muted-foreground shadow-none transition-none data-[state=active]:border-b-rwanda-green data-[state=active]:text-foreground data-[state=active]:shadow-none flex items-center gap-2">
-            <Flame className="h-4 w-4" />
-            <span className="relative">
-              Pending Requests
-              {pendingBookings.length > 0 && (
-                <Badge className="ml-1 h-5 px-1.5 bg-rwanda-green absolute -top-2 -right-7">
-                  {pendingBookings.length}
-                </Badge>
-              )}
-            </span>
-          </TabsTrigger>
-          <TabsTrigger value="upcoming" className="relative h-9 rounded-none border-b-2 border-b-transparent bg-transparent px-4 pb-3 pt-2 font-semibold text-muted-foreground shadow-none transition-none data-[state=active]:border-b-rwanda-green data-[state=active]:text-foreground data-[state=active]:shadow-none flex items-center gap-2">
-            <Calendar className="h-4 w-4" />
-            Upcoming
-          </TabsTrigger>
-          <TabsTrigger value="past" className="relative h-9 rounded-none border-b-2 border-b-transparent bg-transparent px-4 pb-3 pt-2 font-semibold text-muted-foreground shadow-none transition-none data-[state=active]:border-b-rwanda-green data-[state=active]:text-foreground data-[state=active]:shadow-none flex items-center gap-2">
-            <CheckSquare className="h-4 w-4" />
-            Past Events
-          </TabsTrigger>
+  // Booking stats
+  const totalBookings = pendingBookings.length + upcomingBookings.length + pastBookings.length;
+  const approvedCount = upcomingBookings.length + pastBookings.filter(b => b.status === 'COMPLETED').length;
+  const rejectedCount = pastBookings.filter(b => b.status === 'REJECTED' || b.status === 'CANCELLED').length;
+  const totalRevenue = [...upcomingBookings, ...pastBookings].reduce((sum, b) => sum + (b.agreedPrice || 0), 0);
+
+  return (
+    <div className="container mx-auto py-8 max-w-5xl">
+      {/* Booking Stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+        <div className="bg-white rounded-lg shadow p-4 flex flex-col items-center">
+          <span className="text-2xl font-bold text-rwanda-green">{totalBookings}</span>
+          <span className="text-xs text-gray-500 mt-1">Total Bookings</span>
+        </div>
+        <div className="bg-white rounded-lg shadow p-4 flex flex-col items-center">
+          <span className="text-2xl font-bold text-green-600">{approvedCount}</span>
+          <span className="text-xs text-gray-500 mt-1">Approved</span>
+        </div>
+        <div className="bg-white rounded-lg shadow p-4 flex flex-col items-center">
+          <span className="text-2xl font-bold text-red-500">{rejectedCount}</span>
+          <span className="text-xs text-gray-500 mt-1">Rejected</span>
+        </div>
+        <div className="bg-white rounded-lg shadow p-4 flex flex-col items-center">
+          <span className="text-2xl font-bold text-blue-600">RWF {totalRevenue.toLocaleString()}</span>
+          <span className="text-xs text-gray-500 mt-1">Total Revenue</span>
+        </div>
+      </div>
+      {/* Tabs for bookings */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-8">
+        <TabsList className="flex gap-2">
+          <TabsTrigger value="pending">Pending</TabsTrigger>
+          <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
+          <TabsTrigger value="past">Past</TabsTrigger>
         </TabsList>
-
-        {/* Pending Requests Tab */}
-        <TabsContent value="pending" className="space-y-6 mt-0">
+        <div className="flex items-center gap-2 mt-4 mb-6">
+          <Input
+            placeholder="Search by client name..."
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            className="w-64"
+          />
+        </div>
+        {/* Pending Bookings Tab */}
+        <TabsContent value="pending">
           {error && !loading && (
             <div className="bg-red-50 text-red-600 p-6 rounded-lg border border-red-200 text-center">
               <AlertCircle className="h-8 w-8 mx-auto mb-2" />
               <p className="font-medium">{error}</p>
-              <Button variant="outline" className="mt-4" onClick={() => fetchPendingBookings(true)}>
+              <Button variant="outline" className="mt-4" onClick={() => fetchBookings(true)}>
                 <RotateCcw className="h-4 w-4 mr-2" />
                 Try Again
               </Button>
             </div>
           )}
-
           {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="rounded-xl border border-gray-200 p-4">
-                  <div className="flex items-center gap-3 mb-4">
-                    <Skeleton className="h-12 w-12 rounded-full" />
-                    <div className="space-y-2">
-                      <Skeleton className="h-4 w-32" />
-                      <Skeleton className="h-3 w-24" />
-                    </div>
-                  </div>
-                  <div className="space-y-3">
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-3/4" />
-                    <Skeleton className="h-4 w-1/2" />
-                  </div>
-                  <div className="flex gap-2 mt-4">
-                    <Skeleton className="h-8 w-24" />
-                    <Skeleton className="h-8 w-24" />
-                  </div>
-                </div>
-              ))}
+            <div className="flex flex-col items-center justify-center py-16">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-rwanda-green mb-6"></div>
+              <p className="text-lg text-gray-600">Loading bookings...</p>
             </div>
           ) : pendingBookings.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
               {pendingBookings.map((booking) => (
-                <Card key={booking.id} className="overflow-hidden hover:shadow-md transition-all border-l-4 border-l-yellow-400">
-                  <CardHeader className="pb-2 bg-yellow-50/50">
-                    <div className="flex justify-between items-start">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-10 w-10 border-2 border-yellow-100 bg-yellow-50">
-                          <AvatarImage 
-                            src={''} 
-                            alt={booking.userName || 'Client'}
-                          />
-                          <AvatarFallback className="bg-yellow-50">
-                            {booking.userName ? booking.userName.charAt(0).toUpperCase() : <User className="h-5 w-5 text-yellow-600" />}
+                <Card key={booking.id} className="overflow-hidden shadow-xl border-l-8 border-l-yellow-400 hover:shadow-2xl transition-all flex flex-col justify-between">
+                  <CardHeader className="pb-2 bg-yellow-50/50 flex flex-row items-center gap-3">
+                    <Avatar className="h-14 w-14 border-2 border-yellow-100 bg-yellow-50">
+                      <AvatarImage src={''} alt={booking.userName || 'Client'} />
+                      <AvatarFallback className="bg-yellow-50 text-xl">
+                        {booking.userName ? booking.userName.charAt(0).toUpperCase() : <User className="h-7 w-7 text-yellow-600" />}
                           </AvatarFallback>
                         </Avatar>
-                        <div>
-                          <CardTitle className="text-base">{booking.userName || 'Client'}</CardTitle>
-                          <CardDescription className="text-xs flex items-center gap-1">
+                    <div className="flex-1">
+                      <CardTitle className="text-lg font-bold text-gray-800">{booking.userName || 'Client'}</CardTitle>
+                      <CardDescription className="text-xs flex items-center gap-1 text-gray-500">
                             <Clock className="h-3 w-3" />
                             <span>Requested {format(parseISO(booking.createdAt || new Date().toISOString()), 'MMM d, yyyy')}</span>
                           </CardDescription>
-                        </div>
-                      </div>
-                      <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
-                        Pending
-                      </Badge>
                     </div>
+                    <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">Pending</Badge>
                   </CardHeader>
-                  <CardContent className="pt-4 pb-2">
-                    <div className="space-y-3">
-                      <div className="flex items-start gap-2">
-                        <Calendar className="h-4 w-4 text-gray-500 mt-0.5 flex-shrink-0" />
-                        <div>
-                          <p className="text-sm font-medium">{format(parseISO(booking.bookingDate), 'EEEE, MMMM d, yyyy')}</p>
-                          <p className="text-xs text-gray-500">{format(parseISO(booking.bookingDate), 'h:mm a')} · {booking.durationMinutes} minutes</p>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-start gap-2">
-                        <MapPin className="h-4 w-4 text-gray-500 mt-0.5 flex-shrink-0" />
-                        <p className="text-sm">{booking.eventLocation}</p>
-                      </div>
-                      
-                      {booking.notes && (
-                        <div className="flex items-start gap-2">
-                          <MessageSquare className="h-4 w-4 text-gray-500 mt-0.5 flex-shrink-0" />
-                          <p className="text-sm">{booking.notes}</p>
-                        </div>
-                      )}
-                      
-                      {booking.eventRequirements && (
-                        <div className="flex items-start gap-2">
-                          <FileText className="h-4 w-4 text-gray-500 mt-0.5 flex-shrink-0" />
-                          <div>
-                            <p className="text-xs font-medium text-gray-700">Requirements:</p>
-                            <p className="text-sm">{booking.eventRequirements}</p>
-                          </div>
-                        </div>
-                      )}
-                      
-                      {booking.agreedPrice && (
-                        <div className="flex items-center gap-2 bg-green-50 rounded-md p-2">
-                          <CreditCard className="h-4 w-4 text-green-600" />
-                          <p className="text-sm font-medium text-green-700">${booking.agreedPrice.toFixed(2)}</p>
-                        </div>
-                      )}
+                  <CardContent className="pt-4 pb-2 space-y-3">
+                    <div className="flex items-center gap-2 text-gray-700">
+                      <Calendar className="h-4 w-4 text-gray-500" />
+                      <span className="font-medium">{format(parseISO(booking.bookingDate), 'EEEE, MMMM d, yyyy')}</span>
+                      <span className="text-xs text-gray-500">{format(parseISO(booking.bookingDate), 'h:mm a')} · {booking.durationMinutes} min</span>
                     </div>
+                    <div className="flex items-center gap-2 text-gray-700">
+                      <MapPin className="h-4 w-4 text-gray-500" />
+                      <span>{booking.eventLocation}</span>
+                    </div>
+                    {booking.notes && (
+                      <div className="flex items-start gap-2">
+                        <MessageSquare className="h-4 w-4 text-gray-500 mt-0.5 flex-shrink-0" />
+                        <span>{booking.notes}</span>
+                      </div>
+                    )}
+                    {booking.eventRequirements && (
+                      <div className="flex items-start gap-2">
+                        <FileText className="h-4 w-4 text-gray-500 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <span className="text-xs font-medium text-gray-700">Requirements:</span>
+                          <span className="block">{booking.eventRequirements}</span>
+                        </div>
+                      </div>
+                    )}
+                    {booking.agreedPrice && (
+                      <div className="flex items-center gap-2">
+                        <DollarSign className="h-4 w-4 text-gray-500" />
+                        <span className="font-medium">Agreed Price: <span className="text-rwanda-blue">RWF {booking.agreedPrice.toLocaleString()}</span></span>
+                      </div>
+                    )}
                   </CardContent>
-                  <CardFooter className="flex justify-between pt-2 pb-4">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-red-600 hover:bg-red-50 hover:text-red-700 border-red-200"
-                      onClick={() => handleReject(booking.id)}
-                      disabled={actionLoading[booking.id]}
-                    >
-                      {actionLoading[booking.id] ? <Clock className="h-4 w-4 mr-1 animate-spin" /> : <X className="h-4 w-4 mr-1" />}
-                      Decline
-                    </Button>
-                    <Button
-                      size="sm"
-                      className="bg-rwanda-green hover:bg-rwanda-green/90"
-                      onClick={() => handleApprove(booking.id)}
-                      disabled={actionLoading[booking.id]}
-                    >
-                      {actionLoading[booking.id] ? <Clock className="h-4 w-4 mr-1 animate-spin" /> : <Check className="h-4 w-4 mr-1" />}
-                      Accept Booking
-                    </Button>
+                  <CardFooter className="flex flex-col gap-2 pt-4 bg-gray-50">
+                    <div className="flex gap-2 w-full">
+                      <Button
+                        variant="outline"
+                        size="lg"
+                        className="flex-1 border-yellow-400 text-yellow-700 hover:bg-yellow-100"
+                        onClick={() => handleReject(booking.id)}
+                        disabled={actionLoading[booking.id]}
+                      >
+                        <X className="h-5 w-5 mr-2" />
+                        {actionLoading[booking.id] ? "Rejecting..." : "Reject"}
+                      </Button>
+                      <Button
+                        size="lg"
+                        className="flex-1 bg-rwanda-green hover:bg-rwanda-green/90 text-white"
+                        onClick={() => handleApprove(booking.id)}
+                        disabled={actionLoading[booking.id]}
+                      >
+                        <Check className="h-5 w-5 mr-2" />
+                        {actionLoading[booking.id] ? "Approving..." : "Approve"}
+                      </Button>
+                    </div>
                   </CardFooter>
                 </Card>
               ))}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center py-16 text-gray-500 bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
-              <CheckCircle className="h-16 w-16 mb-4 text-green-500" />
-              <p className="text-xl font-medium">No pending booking requests</p>
-              <p className="text-gray-500 mt-1">When clients request to book you, they'll appear here</p>
-              <Button variant="outline" className="mt-6">
-                <Calendar className="h-4 w-4 mr-2" />
-                View Calendar
-              </Button>
+            <div className="flex flex-col items-center justify-center py-16">
+              <img src="/empty-bookings.svg" alt="No bookings" className="w-32 h-32 mb-6 opacity-70" />
+              <p className="text-xl font-medium text-gray-500">No Pending Booking Requests</p>
+              <p className="mt-2 text-gray-400">You're all caught up! Check back later for new requests.</p>
             </div>
           )}
         </TabsContent>
-
-        {/* Upcoming Tab (Placeholder) */}
-        <TabsContent value="upcoming" className="space-y-6 mt-0">
-          <div className="flex flex-col items-center justify-center py-16 text-gray-500 bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
-            <Calendar className="h-16 w-16 mb-4 text-blue-500" />
-            <p className="text-xl font-medium">No upcoming bookings</p>
-            <p className="text-gray-500 mt-1">You don't have any confirmed bookings coming up</p>
-          </div>
+        {/* Upcoming Bookings Tab */}
+        <TabsContent value="upcoming">
+          {error && !loading && (
+            <div className="bg-red-50 text-red-600 p-6 rounded-lg border border-red-200 text-center">
+              <AlertCircle className="h-8 w-8 mx-auto mb-2" />
+              <p className="font-medium">{error}</p>
+              <Button variant="outline" className="mt-4" onClick={() => fetchBookings(true)}>
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Try Again
+              </Button>
+            </div>
+          )}
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-16">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-rwanda-green mb-6"></div>
+              <p className="text-lg text-gray-600">Loading bookings...</p>
+            </div>
+          ) : upcomingBookings.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+              {upcomingBookings.map((booking) => (
+                <Card key={booking.id} className="overflow-hidden shadow-xl border-l-8 border-l-blue-400 hover:shadow-2xl transition-all flex flex-col justify-between">
+                  <CardHeader className="pb-2 bg-blue-50/50 flex flex-row items-center gap-3">
+                    <Avatar className="h-14 w-14 border-2 border-blue-100 bg-blue-50">
+                      <AvatarImage src={''} alt={booking.userName || 'Client'} />
+                      <AvatarFallback className="bg-blue-50 text-xl">
+                        {booking.userName ? booking.userName.charAt(0).toUpperCase() : <User className="h-7 w-7 text-blue-600" />}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <CardTitle className="text-lg font-bold text-gray-800">{booking.userName || 'Client'}</CardTitle>
+                      <CardDescription className="text-xs flex items-center gap-1 text-gray-500">
+                        <Calendar className="h-3 w-3" />
+                        <span>{format(parseISO(booking.bookingDate), 'EEEE, MMMM d, yyyy')}</span>
+                      </CardDescription>
+                    </div>
+                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Upcoming</Badge>
+                  </CardHeader>
+                  <CardContent className="pt-4 pb-2 space-y-3">
+                    <div className="flex items-center gap-2 text-gray-700">
+                      <Calendar className="h-4 w-4 text-gray-500" />
+                      <span className="font-medium">{format(parseISO(booking.bookingDate), 'EEEE, MMMM d, yyyy')}</span>
+                      <span className="text-xs text-gray-500">{format(parseISO(booking.bookingDate), 'h:mm a')} · {booking.durationMinutes} min</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-gray-700">
+                      <MapPin className="h-4 w-4 text-gray-500" />
+                      <span>{booking.eventLocation}</span>
+                    </div>
+                    {booking.notes && (
+                      <div className="flex items-start gap-2">
+                        <MessageSquare className="h-4 w-4 text-gray-500 mt-0.5 flex-shrink-0" />
+                        <span>{booking.notes}</span>
+                      </div>
+                    )}
+                    {booking.eventRequirements && (
+                      <div className="flex items-start gap-2">
+                        <FileText className="h-4 w-4 text-gray-500 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <span className="text-xs font-medium text-gray-700">Requirements:</span>
+                          <span className="block">{booking.eventRequirements}</span>
+                        </div>
+                      </div>
+                    )}
+                    {booking.agreedPrice && (
+                      <div className="flex items-center gap-2">
+                        <DollarSign className="h-4 w-4 text-gray-500" />
+                        <span className="font-medium">Agreed Price: <span className="text-rwanda-blue">RWF {booking.agreedPrice.toLocaleString()}</span></span>
+                      </div>
+                    )}
+                  </CardContent>
+                  <CardFooter className="flex flex-col gap-2 pt-4 bg-gray-50">
+                    <div className="flex gap-2 w-full">
+                      <Button
+                        variant="outline"
+                        size="lg"
+                        className="flex-1 border-blue-400 text-blue-700 hover:bg-blue-100"
+                        onClick={() => setSelectedBooking(booking)}
+                      >
+                        <Info className="h-5 w-5 mr-2" />
+                        View Details
+                      </Button>
+                    </div>
+                  </CardFooter>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-16">
+              <img src="/empty-bookings.svg" alt="No bookings" className="w-32 h-32 mb-6 opacity-70" />
+              <p className="text-xl font-medium text-gray-500">No Upcoming Bookings</p>
+              <p className="mt-2 text-gray-400">You have no upcoming performances scheduled.</p>
+            </div>
+          )}
         </TabsContent>
-
-        {/* Past Events Tab (Placeholder) */}
-        <TabsContent value="past" className="space-y-6 mt-0">
-          <div className="flex flex-col items-center justify-center py-16 text-gray-500 bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
-            <CheckSquare className="h-16 w-16 mb-4 text-gray-400" />
-            <p className="text-xl font-medium">No past events</p>
-            <p className="text-gray-500 mt-1">Your completed bookings will appear here</p>
-          </div>
+        {/* Past Bookings Tab */}
+        <TabsContent value="past">
+          {error && !loading && (
+            <div className="bg-red-50 text-red-600 p-6 rounded-lg border border-red-200 text-center">
+              <AlertCircle className="h-8 w-8 mx-auto mb-2" />
+              <p className="font-medium">{error}</p>
+              <Button variant="outline" className="mt-4" onClick={() => fetchBookings(true)}>
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Try Again
+              </Button>
+            </div>
+          )}
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-16">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-rwanda-green mb-6"></div>
+              <p className="text-lg text-gray-600">Loading bookings...</p>
+            </div>
+          ) : pastBookings.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+              {pastBookings.map((booking) => (
+                <Card key={booking.id} className="overflow-hidden shadow-xl border-l-8 border-l-gray-400 hover:shadow-2xl transition-all flex flex-col justify-between">
+                  <CardHeader className="pb-2 bg-gray-50/50 flex flex-row items-center gap-3">
+                    <Avatar className="h-14 w-14 border-2 border-gray-100 bg-gray-50">
+                      <AvatarImage src={''} alt={booking.userName || 'Client'} />
+                      <AvatarFallback className="bg-gray-50 text-xl">
+                        {booking.userName ? booking.userName.charAt(0).toUpperCase() : <User className="h-7 w-7 text-gray-600" />}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <CardTitle className="text-lg font-bold text-gray-800">{booking.userName || 'Client'}</CardTitle>
+                      <CardDescription className="text-xs flex items-center gap-1 text-gray-500">
+                        <Calendar className="h-3 w-3" />
+                        <span>{format(parseISO(booking.bookingDate), 'EEEE, MMMM d, yyyy')}</span>
+                      </CardDescription>
+                    </div>
+                    <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">Past</Badge>
+                  </CardHeader>
+                  <CardContent className="pt-4 pb-2 space-y-3">
+                    <div className="flex items-center gap-2 text-gray-700">
+                      <Calendar className="h-4 w-4 text-gray-500" />
+                      <span className="font-medium">{format(parseISO(booking.bookingDate), 'EEEE, MMMM d, yyyy')}</span>
+                      <span className="text-xs text-gray-500">{format(parseISO(booking.bookingDate), 'h:mm a')} · {booking.durationMinutes} min</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-gray-700">
+                      <MapPin className="h-4 w-4 text-gray-500" />
+                      <span>{booking.eventLocation}</span>
+                    </div>
+                      {booking.notes && (
+                        <div className="flex items-start gap-2">
+                          <MessageSquare className="h-4 w-4 text-gray-500 mt-0.5 flex-shrink-0" />
+                        <span>{booking.notes}</span>
+                        </div>
+                      )}
+                      {booking.eventRequirements && (
+                        <div className="flex items-start gap-2">
+                          <FileText className="h-4 w-4 text-gray-500 mt-0.5 flex-shrink-0" />
+                          <div>
+                          <span className="text-xs font-medium text-gray-700">Requirements:</span>
+                          <span className="block">{booking.eventRequirements}</span>
+                          </div>
+                        </div>
+                      )}
+                      {booking.agreedPrice && (
+                      <div className="flex items-center gap-2">
+                        <DollarSign className="h-4 w-4 text-gray-500" />
+                        <span className="font-medium">Agreed Price: <span className="text-rwanda-blue">RWF {booking.agreedPrice.toLocaleString()}</span></span>
+                        </div>
+                      )}
+                  </CardContent>
+                  <CardFooter className="flex flex-col gap-2 pt-4 bg-gray-50">
+                    <div className="flex gap-2 w-full">
+                    <Button
+                      variant="outline"
+                        size="lg"
+                        className="flex-1 border-gray-400 text-gray-700 hover:bg-gray-100"
+                        onClick={() => setSelectedBooking(booking)}
+                      >
+                        <Info className="h-5 w-5 mr-2" />
+                        View Details
+                    </Button>
+                    </div>
+                  </CardFooter>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-16">
+              <img src="/empty-bookings.svg" alt="No bookings" className="w-32 h-32 mb-6 opacity-70" />
+              <p className="text-xl font-medium text-gray-500">No Past Bookings</p>
+              <p className="mt-2 text-gray-400">You have no past performances.</p>
+            </div>
+          )}
         </TabsContent>
       </Tabs>
+      {/* Booking Details Modal */}
+      {selectedBooking && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 animate-fadeIn">
+          <div className="bg-white rounded-lg shadow-2xl max-w-lg w-full p-8 relative animate-slideUp">
+            <button className="absolute top-3 right-3 text-gray-400 hover:text-gray-700" onClick={() => setSelectedBooking(null)}>
+              <X className="h-6 w-6" />
+            </button>
+            <h2 className="text-2xl font-bold mb-2">Booking Details</h2>
+            <div className="mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <User className="h-5 w-5 text-gray-500" />
+                <span className="font-medium">{selectedBooking.userName || 'Client'}</span>
+              </div>
+              <div className="flex items-center gap-2 mb-2">
+                <Calendar className="h-5 w-5 text-gray-500" />
+                <span>{format(parseISO(selectedBooking.bookingDate), 'PPPpp')}</span>
+              </div>
+              <div className="flex items-center gap-2 mb-2">
+                <MapPin className="h-5 w-5 text-gray-500" />
+                <span>{selectedBooking.eventLocation}</span>
+              </div>
+              <div className="flex items-center gap-2 mb-2">
+                <DollarSign className="h-5 w-5 text-gray-500" />
+                <span>RWF {selectedBooking.agreedPrice?.toLocaleString()}</span>
+              </div>
+              <div className="flex items-center gap-2 mb-2">
+                <Clock className="h-5 w-5 text-gray-500" />
+                <span>{selectedBooking.durationMinutes} min</span>
+              </div>
+              {selectedBooking.notes && (
+                <div className="flex items-start gap-2 mb-2">
+                  <MessageSquare className="h-5 w-5 text-gray-500 mt-0.5" />
+                  <span>{selectedBooking.notes}</span>
+                </div>
+              )}
+              {selectedBooking.eventRequirements && (
+                <div className="flex items-start gap-2 mb-2">
+                  <FileText className="h-5 w-5 text-gray-500 mt-0.5" />
+                  <span>{selectedBooking.eventRequirements}</span>
+                </div>
+              )}
+            </div>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <Mail className="h-5 w-5 text-gray-500" />
+                <span>{selectedBooking.userEmail || 'N/A'}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Phone className="h-5 w-5 text-gray-500" />
+                <span>{selectedBooking.userPhone || 'N/A'}</span>
+              </div>
+            </div>
+          </div>
+          </div>
+      )}
     </div>
   );
 };

@@ -9,7 +9,8 @@ import {
   Info, 
   Settings, 
   Check, 
-  Trash2 
+  Trash2,
+  RefreshCcw
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
@@ -257,34 +258,19 @@ const NotificationDropdown: React.FC = () => {
         </button>
       </PopoverTrigger>
       <PopoverContent 
-        className="w-[400px] p-0 mr-4 max-h-[80vh] flex flex-col shadow-lg"
+        className="w-96 p-0 shadow-lg rounded-lg border border-gray-200"
         align="end"
         sideOffset={5}
       >
-        <div className="flex items-center justify-between bg-gray-50 p-4 border-b sticky top-0 z-10">
-          <h3 className="font-semibold text-lg">Notifications</h3>
+        <div className="flex items-center justify-between px-4 py-2 border-b bg-gray-50">
+          <span className="font-semibold text-gray-700">Notifications</span>
           <div className="flex gap-2">
-            <button 
-              onClick={handleMarkAllAsRead}
-              className="text-gray-600 hover:text-gray-900 p-1 rounded hover:bg-gray-200"
-              title="Mark all as read"
-            >
+            <Button variant="ghost" size="icon" onClick={refresh} title="Refresh notifications">
+              <RefreshCcw className="h-5 w-5" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={handleMarkAllAsRead} title="Mark all as read">
               <Check className="h-5 w-5" />
-            </button>
-            <button 
-              onClick={handleClearAll}
-              className="text-gray-600 hover:text-gray-900 p-1 rounded hover:bg-gray-200"
-              title="Clear all notifications"
-            >
-              <Trash2 className="h-5 w-5" />
-            </button>
-            <button 
-              onClick={() => navigate(userProfile?.userType === 'TALENT' ? '/talent/notifications' : '/notifications')}
-              className="text-gray-600 hover:text-gray-900 p-1 rounded hover:bg-gray-200"
-              title="Settings"
-            >
-              <Settings className="h-5 w-5" />
-            </button>
+            </Button>
           </div>
         </div>
         
@@ -292,6 +278,7 @@ const NotificationDropdown: React.FC = () => {
           {loading && (
             <div className="flex justify-center items-center p-4">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-rwanda-green"></div>
+              <span className="ml-2 text-gray-500">Loading notifications...</span>
             </div>
           )}
           

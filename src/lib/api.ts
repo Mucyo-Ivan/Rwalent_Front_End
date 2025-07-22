@@ -15,17 +15,29 @@ api.interceptors.request.use(
     const token = localStorage.getItem('token');
     if (token && config.headers) {
       config.headers['Authorization'] = `Bearer ${token}`;
-      console.log('[API] Request headers:', config.headers);
+      console.log('[API Request Interceptor] Token added. Request to:', config.url, 'Headers:', config.headers);
     } else {
-      // Only show warning for protected routes
-      if (config.url && !config.url.includes('/api/auth/')) {
-        console.warn('[API] No token found in localStorage for protected route:', config.url);
+      if (config.url && !config.url.includes('/api/auth/') && !config.url.includes('/api/talents/search')) {
+        console.warn('[API Request Interceptor] No token found in localStorage for protected route:', config.url);
       }
     }
+
+    // Handle multipart/form-data requests specifically for non-upload-service API calls
+    // The upload-service will handle its own Content-Type.
+    if (config.data instanceof FormData) {
+      config.headers['Content-Type'] = 'multipart/form-data';
+      console.log('[API Request Interceptor] FormData detected. Content-Type set to multipart/form-data for', config.url);
+    } else if (config.headers && !config.headers['Content-Type']) {
+        // Default to application/json if not explicitly set and not FormData
+        config.headers['Content-Type'] = 'application/json';
+        console.log('[API Request Interceptor] Defaulting Content-Type to application/json for', config.url);
+    }
+
+    console.log('[API Request Interceptor] Sending request:', config.method?.toUpperCase(), config.url, 'Data:', config.data);
     return config;
   },
   error => {
-    console.error('Request error:', error);
+    console.error('[API Request Interceptor] Request error:', error.message, error.config);
     return Promise.reject(error);
   }
 );
@@ -33,34 +45,38 @@ api.interceptors.request.use(
 // Add response interceptor for debugging
 api.interceptors.response.use(
   response => {
-    console.log('[API] Response received:', response.status, response.config.url);
+    console.log('[API Response Interceptor] Response received for:', response.config.method?.toUpperCase(), response.config.url, 'Status:', response.status, 'Data:', response.data);
     return response;
   },
   error => {
     if (error.response) {
+      console.error('[API Response Interceptor] Error Response: URL:', error.config.url, 'Status:', error.response.status, 'Data:', error.response.data, 'Headers:', error.response.headers);
       // Handle 401 Unauthorized
       if (error.response.status === 401) {
-        console.log('[API] 401 Unauthorized - clearing token and redirecting to login');
+        console.log('[API Response Interceptor] 401 Unauthorized - clearing token and redirecting to login');
         localStorage.removeItem('token');
         localStorage.removeItem('userType');
+        localStorage.removeItem('userProfile'); // Clear user profile as well
         window.location.href = '/signin';
         toast.error('Your session has expired. Please sign in again.');
       }
       // Handle 403 Forbidden
       else if (error.response.status === 403) {
-        console.log('[API] 403 Forbidden - access denied:', error.response.config.url);
-        toast.error('You do not have permission to perform this action.');
+        console.log('[API Response Interceptor] 403 Forbidden - access denied for:', error.config.url);
+        toast.error(error.response.data?.detail || 'You do not have permission to perform this action.');
       }
       // Handle other errors
       else {
-        console.error(`[API] Error Response: ${error.response.status} ${error.response.statusText}`, error.response.data);
+        console.error(`[API Response Interceptor] Error Response: ${error.response.status} ${error.response.statusText}`, error.response.data);
         toast.error(error.response.data?.message || 'An error occurred. Please try again.');
       }
     } else if (error.request) {
-      console.error('[API] Error Request:', error.request);
-      toast.error('Network error. Please check your connection.');
+      // The request was made but no response was received
+      console.error('[API Response Interceptor] Error Request: No response received. URL:', error.config.url, 'Error:', error.message);
+      toast.error('Network error. Please check your connection or the backend server.');
     } else {
-      console.error('[API] Error Message:', error.message);
+      // Something happened in setting up the request that triggered an Error
+      console.error('[API Response Interceptor] Error Message:', error.message, 'Config:', error.config);
       toast.error('An unexpected error occurred.');
     }
     return Promise.reject(error);
@@ -196,78 +212,64 @@ export const auth = {
     const response = await api.post('/api/auth/register', userData);
     return response.data;
   },
-  // Updated registerTalent to handle FormData and Content-Type
-  registerTalent: async (formData: FormData): Promise<any> => {
-    console.log('Sending talent registration request with FormData...');
-    const response = await api.post('/api/auth/register', formData, {
+  registerTalent: async (userData: {
+    fullName: string;
+    email: string;
+    password: string;
+    userType: string;
+    phoneNumber: string;
+    category: string;
+    location: string;
+    bio: string;
+    serviceAndPricing: string;
+    photoUrl?: string; // photoUrl is now optional
+  }): Promise<any> => {
+    console.log('Sending talent registration request with JSON data:', userData);
+    try {
+      const response = await api.post('/api/auth/register', userData, {
       headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-      transformRequest: [(data) => data], // Prevent axios from transforming the FormData
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
     });
     return response.data;
-  },
-  // Function to upload profile picture
-  uploadProfilePicture: async (file: File): Promise<{ photoUrl: string }> => {
-    console.log('Uploading profile picture file...');
-    const formData = new FormData();
-    formData.append('file', file);
-    
-    const response = await api.post('/api/auth/profile/picture', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-      transformRequest: [(data) => data], // Prevent axios from modifying FormData
-    });
-    // The backend returns the URL string directly, so we wrap it in an object
-    return { photoUrl: response.data };
-  },
-  
-  // Function to update profile with photo URL (after photo is uploaded separately)
-  updateProfileWithPhoto: async (profileData: any): Promise<Profile> => {
-    console.log('Updating profile with photo URL...');
-    // First upload the photo if it exists as a File object
-    if (profileData.profilePicture && profileData.profilePicture instanceof File) {
-      try {
-        const file = profileData.profilePicture;
-        const uploadResult = await auth.uploadProfilePicture(file);
-        // Replace the File with the URL returned from the server
-        profileData.photoUrl = uploadResult.photoUrl;
-        delete profileData.profilePicture; // Remove the file object
-      } catch (error) {
-        console.error('Error uploading profile picture:', error);
-        // Continue with the update even if the picture upload fails
+    } catch (error: any) {
+      console.error('Talent registration error:', error);
+      if (error.response) {
+        console.error('Error response:', error.response.data);
+        console.error('Error status:', error.response.status);
+        throw new Error(error.response.data.detail || 'Failed to register talent');
       }
+      throw error;
     }
-    
-    // Now send the regular JSON data (no FormData)
-    const response = await api.put('/api/auth/profile', profileData);
-    return response.data;
+  },
+  getProfile: async (): Promise<Profile> => {
+    try {
+      const response = await api.get('/api/auth/profile');
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to fetch profile:', error);
+      throw error;
+    }
+  },
+  updateProfile: async (profileData: UpdateProfilePayload & { photoUrl?: string }): Promise<Profile> => {
+    try {
+      const response = await api.put('/api/auth/profile', profileData, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to update profile:', error);
+      throw error;
+    }
   },
   search: async (searchTerm: string): Promise<SearchResponse> => {
     // Backend for /api/talents/search does not support GET, trying POST.
     // Sending searchTerm in the request body.
     const response = await api.post(`/api/talents/search`, { query: searchTerm });
-    return response.data;
-  },
-  // getProfile no longer needs the token argument if the interceptor handles it
-  getProfile: async (): Promise<Profile> => {
-    const response = await api.get('/api/auth/profile');
-    const profile = response.data;
-    // Update stored user type if it changed
-    if (profile.userType) {
-      localStorage.setItem('userType', profile.userType);
-    }
-    return profile;
-  },
-  // Updated updateProfile function to use the specific payload and endpoint
-  updateProfile: async (profileData: UpdateProfilePayload): Promise<Profile> => {
-      console.log('Sending profile update request with JSON data:', profileData);
-      // Token is added by the request interceptor
-      // Use PUT /api/auth/profile as indicated by the 400 error instance path
-      const response = await api.put('/api/auth/profile', profileData);
-      // Assuming response contains the updated profile, potentially with photoUrl/profilePictureUrl
-      // Sticking with Profile return type for now.
     return response.data;
   },
   // Add new function to get talent dashboard data
@@ -278,13 +280,17 @@ export const auth = {
 };
 
 // --- Booking Related Interfaces and Functions ---
+// ERASED: All booking-related interfaces and the 'booking' export
+
+// --- Booking API Client ---
 export interface BookingRequestPayload {
-  bookingDate: string; // ISO 8601 format string: "2024-08-20T18:30:00"
+  talentId: number;
+  bookingDate: string;
   durationMinutes: number;
-  notes: string;
   eventLocation: string;
-  agreedPrice?: number | null; // Optional, as per example
-  eventRequirements?: string | null; // Optional
+  agreedPrice?: number;
+  eventRequirements?: string;
+  notes?: string;
 }
 
 export interface BookingResponse {
@@ -293,182 +299,65 @@ export interface BookingResponse {
   userId: number;
   bookingDate: string;
   durationMinutes: number;
-  status: "PENDING" | "CONFIRMED" | "CANCELLED" | "COMPLETED" | string; // Allow other strings for flexibility
-  notes: string;
+  status: string;
   eventLocation: string;
-  agreedPrice: number | null;
-  eventRequirements: string | null;
-  talentName?: string; // Optional as per example
-  userName?: string; // Optional as per example
-  // Add any other fields that might come from the backend
+  agreedPrice: number;
+  eventRequirements: string;
+  notes: string;
+  talentName?: string;
+  userName?: string;
   createdAt?: string;
   updatedAt?: string;
 }
 
 export const booking = {
-  createBookingRequest: async (talentId: number, payload: BookingRequestPayload): Promise<BookingResponse> => {
-    console.log(`Sending booking request for talent ID ${talentId}:`, payload);
-    // The token is added by the request interceptor.
-    // URL is now /api/bookings/talent/{talentId}
-    const response = await api.post<BookingResponse>(`/api/bookings/talent/${talentId}`, payload);
+  // 1. Create a Booking (User)
+  createBooking: async (payload: BookingRequestPayload): Promise<BookingResponse> => {
+    const response = await api.post('/api/bookings', payload);
     return response.data;
   },
 
+  // 2. Get My Bookings (User)
+  getMyBookings: async (): Promise<BookingResponse[]> => {
+    const response = await api.get('/api/bookings/my');
+    return response.data;
+  },
+
+  // 3. Get Bookings for My Talent Profile (Talent)
+  getTalentBookings: async (): Promise<BookingResponse[]> => {
+    const response = await api.get('/api/bookings/talent');
+    return response.data;
+  },
+
+  // 4. Get Booking by ID
+  getBookingById: async (id: number): Promise<BookingResponse> => {
+    const response = await api.get(`/api/bookings/${id}`);
+    return response.data;
+  },
+
+  // 5. Approve a Booking (Talent)
+  approveBooking: async (id: number): Promise<BookingResponse> => {
+    const response = await api.post(`/api/bookings/${id}/approve`);
+    return response.data;
+  },
+
+  // 6. Reject a Booking (Talent)
+  rejectBooking: async (id: number): Promise<BookingResponse> => {
+    const response = await api.post(`/api/bookings/${id}/reject`);
+    return response.data;
+  },
+
+  // 7. Cancel a Booking (Client)
+  cancelBooking: async (id: number): Promise<BookingResponse> => {
+    const response = await api.post(`/api/bookings/${id}/cancel`);
+    return response.data;
+  },
+
+  // 8. Get My Pending Bookings (Talent)
   getPendingTalentBookings: async (): Promise<BookingResponse[]> => {
-    try {
-      // Use the real API endpoint to fetch pending booking requests
-      const response = await api.get<BookingResponse[]>('/api/bookings/talent/pending');
-      
-      // Check if the response contains data
-      if (!response.data || !Array.isArray(response.data) || response.data.length === 0) {
-        console.log('No pending booking requests found or empty response');
-        return [];
-      }
-      
-      // Sort by date, newest first
-      return response.data.sort((a, b) => {
-        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-        return dateB - dateA;
-      });
-    } catch (error) {
-      console.error("Failed to fetch pending bookings:", error);
-      toast.error("Could not load pending booking requests.");
-      
-      // If the API fails in development, we could fall back to mock data here
-      // but in production we should return an empty array
-      return []; // Return empty array on error
-    }
+    const response = await api.get('/api/bookings/talent/pending');
+    return response.data;
   },
-
-  approveBooking: async (bookingId: number): Promise<BookingResponse> => {
-    try {
-      // Using POST to approve a booking
-      const response = await api.post<BookingResponse>(`/api/bookings/${bookingId}/approve`);
-      toast.success("Booking approved successfully");
-      return response.data;
-    } catch (error) {
-      console.error(`Failed to approve booking ${bookingId}:`, error);
-      toast.error("Could not approve booking. Please try again.");
-      throw error;
-    }
-  },
-
-  rejectBooking: async (bookingId: number): Promise<BookingResponse> => {
-    try {
-      // Using POST to reject a booking
-      const response = await api.post<BookingResponse>(`/api/bookings/${bookingId}/reject`);
-      toast.success("Booking request declined");
-      return response.data;
-    } catch (error) {
-      console.error(`Failed to reject booking ${bookingId}:`, error);
-      toast.error("Could not decline booking. Please try again.");
-      throw error;
-    }
-  },
-
-  // Placeholder for fetching user's bookings - can be expanded later
-  // getUserBookings: async (): Promise<BookingResponse[]> => {
-  //   const response = await api.get<BookingResponse[]>('/api/bookings/my-bookings');
-  //   return response.data;
-  // },
-  // Placeholder for talent fetching their bookings - can be expanded later
-  // getTalentBookings: async (): Promise<BookingResponse[]> => {
-  //   const response = await api.get<BookingResponse[]>('/api/bookings/talent-bookings');
-  //   return response.data;
-  // }
-};
-
-export const talent = {
-  // Fetch talent by ID using the exact API endpoint provided
-  getTalentById: async (id: string): Promise<any> => {
-    try {
-      // Using the exact API endpoint as specified
-      const response = await api.get(`/api/talents/${id}`);
-      return response.data;
-    } catch (error) {
-      console.error(`Error fetching talent with ID ${id}:`, error);
-      // Return null on error and let the component handle the fallback
-      return null;
-    }
-  },
-  
-  getByCategory: async (category: string): Promise<SearchResponse> => {
-    try {
-      const response = await api.get(`/api/talents/category/${category}`);
-      if (!response.data) {
-        throw new Error('No data received from server');
-      }
-      return response.data;
-    } catch (error) {
-      console.error(`Error fetching talents for category ${category}:`, error);
-      if (axios.isAxiosError(error) && error.response) {
-        console.error('Error response:', error.response.data);
-        console.error('Error status:', error.response.status);
-      }
-      throw error;
-    }
-  },
-  
-  getAll: async (): Promise<SearchResponse> => {
-    try {
-      const response = await api.get('/api/talents');
-      if (!response.data) {
-        throw new Error('No data received from server');
-      }
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching all talents:', error);
-      if (axios.isAxiosError(error) && error.response) {
-        console.error('Error response:', error.response.data);
-        console.error('Error status:', error.response.status);
-      }
-      throw error;
-    }
-  },
-  
-  // Get talent by ID - ALWAYS PROVIDES DEMO DATA if real data not found
-  getById: async (talentId: string | number): Promise<any> => {
-    const idToFetch = talentId;
-    const defaultId = typeof idToFetch === 'string' ? parseInt(idToFetch) : idToFetch;
-    
-    try {
-      console.log(`Fetching talent with ID: ${idToFetch}`);
-      const response = await api.get(`/api/talents/${idToFetch}`);
-      
-      if (response && response.data) {
-        console.log(`Successfully retrieved talent data from API for ID: ${idToFetch}`);
-        return response.data;
-      } else {
-        console.warn(`No data returned for ID ${idToFetch}, using demo data.`);
-        throw new Error('No data returned');
-      }
-    } catch (apiError) {
-      console.log(`API error or no data for ID ${idToFetch}, using demo data instead.`);
-      
-      // ALWAYS return demo data - this ensures the app works even without a database
-      // This creates a realistic talent profile for demo purposes
-      return {
-        id: defaultId,
-        fullName: `Demo Talent ${defaultId}`,
-        email: `demo.talent${defaultId}@rwalent.com`,
-        username: `demo.talent${defaultId}@rwalent.com`,
-        phoneNumber: "+250788123456",
-        userType: "TALENT",
-        category: "MUSICIAN",
-        location: "Kigali, Rwanda",
-        bio: "This is a demo talent profile for the Rwalent platform. In a production environment, this would show a real talent's biography and information.",
-        serviceAndPricing: "Demo performances starting from 20,000 RWF per hour",
-        photoUrl: 'https://randomuser.me/api/portraits/men/32.jpg',
-        profilePicture: 'https://randomuser.me/api/portraits/men/32.jpg',
-        enabled: true,
-        authorities: [{ authority: 'ROLE_TALENT' }],
-        accountNonExpired: true,
-        accountNonLocked: true,
-        credentialsNonExpired: true
-      };
-    }
-  }
 };
 
 export const notifications = {
@@ -510,6 +399,17 @@ export const notifications = {
     console.log('[Notifications] Deleting read notifications');
     await api.delete('/api/notifications/delete-read');
   }
+};
+
+export const reviews = {
+  submitReview: async (talentId: number, rating: number, comment: string) => {
+    const response = await api.post(`/api/reviews/talent/${talentId}`, { rating, comment });
+    return response.data;
+  },
+  getReviewsForTalent: async (talentId: number) => {
+    const response = await api.get(`/api/reviews/talent/${talentId}`);
+    return response.data;
+  },
 };
 
 export default api; 

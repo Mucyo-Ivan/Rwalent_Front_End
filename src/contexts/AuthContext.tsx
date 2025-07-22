@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from "react";
 import { auth } from "@/lib/api";
+import { toast } from "react-hot-toast";
 
 interface UserProfile {
   name: string;
@@ -33,79 +34,81 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
 
-  useEffect(() => {
-    // Check if user is authenticated on app load
-    const checkAuth = () => {
-      const auth = localStorage.getItem("isAuthenticated");
-      
-      if (auth === "true") {
-        setIsAuthenticated(true);
-        
-        const storedProfile = localStorage.getItem("userProfile");
-        if (storedProfile) {
-          try {
-            setUserProfile(JSON.parse(storedProfile));
-          } catch (e) {
-            console.error("Error parsing user profile", e);
-          }
-        }
-      }
-      
-      setLoading(false);
-    };
-
-    checkAuth();
-  }, []);
-
+  // Function to refresh user profile data from the backend
   const refreshUserProfile = async () => {
     try {
+      console.log("[AuthContext] Attempting to refresh user profile...");
       const profile = await auth.getProfile();
+      console.log("[AuthContext] Profile fetched successfully:", profile);
+
       const userProfile: UserProfile = {
-        name: profile.fullName,
-        email: profile.email,
+        name: profile.fullName || "",
+        email: profile.email || "",
         role: profile.userType === "TALENT" ? "talent" : "user",
-        userType: profile.userType,
-        fullName: profile.fullName,
+        userType: profile.userType || "",
+        fullName: profile.fullName || "",
         id: profile.id,
-        photoUrl: profile.photoUrl,
+        photoUrl: profile.photoUrl || undefined,
         ...(profile.userType === "TALENT" ? { 
-          talentCategory: profile.category,
-          registrationComplete: true
+          talentCategory: profile.category || undefined,
+          registrationComplete: true // Assuming if profile is fetched for talent, registration is complete
         } : {})
       };
       setUserProfile(userProfile);
       localStorage.setItem("userProfile", JSON.stringify(userProfile));
+      console.log("[AuthContext] User profile set:", userProfile);
     } catch (error) {
-      console.error("Error refreshing user profile:", error);
-      // If profile refresh fails, log out the user
+      console.error("[AuthContext] Error refreshing user profile:", error);
+      // If profile refresh fails, it might mean the token is invalid or expired.
+      // Attempt to log out the user.
       logout();
+      toast.error("Failed to load user profile. Please sign in again.");
+    } finally {
+      setLoading(false); // Ensure loading is set to false after profile refresh attempt
     }
   };
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const storedAuth = localStorage.getItem("isAuthenticated");
+
+    if (token && storedAuth === "true") {
+      setIsAuthenticated(true);
+      // Only try to refresh profile if not already loading or already fetched
+      if (!userProfile) {
+        refreshUserProfile();
+      }
+    } else {
+      setIsAuthenticated(false);
+      setUserProfile(null);
+      setLoading(false);
+    }
+  }, [isAuthenticated, userProfile]); // Depend on isAuthenticated and userProfile for re-evaluation
 
   const login = async (email: string, password: string) => {
     try {
       const response = await auth.login(email, password);
       if (response && response.token) {
-        console.log('Token received:', response.token);
+        console.log('[AuthContext] Token received during login.');
         localStorage.setItem("token", response.token);
+        localStorage.setItem("isAuthenticated", "true");
         setIsAuthenticated(true);
-    
-        // Fetch user profile to determine user type
+
+        // Fetch user profile immediately after successful login
         await refreshUserProfile();
-        
-        // Return the user type for redirection
-        return response.userType || "REGULAR_USER";
+
+        // Return the user type for redirection (from backend response)
+        return response.userType || response.user_type || "REGULAR_USER";
       }
       throw new Error("Login failed - no token received");
     } catch (error) {
-      console.error("Login error:", error);
+      console.error("[AuthContext] Login error:", error);
       throw error;
     }
   };
 
   const register = async (name: string, email: string, password: string, role: "user" | "talent", talentCategory?: string) => {
     try {
-      // Call the backend API to register the user
       if (role === "user") {
         const response = await auth.registerRegular({
           fullName: name,
@@ -119,12 +122,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           localStorage.setItem("isAuthenticated", "true");
           setIsAuthenticated(true);
           
-          // Fetch user profile after registration
           await refreshUserProfile();
         }
       } else {
-        // For talents, we just store basic info initially
-        // The actual registration happens in the RegisterTalentPage component
         const userProfile: UserProfile = {
           name,
           email,
@@ -139,41 +139,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsAuthenticated(true);
       }
     } catch (error) {
-      console.error("Registration error:", error);
+      console.error("[AuthContext] Registration error:", error);
       throw error;
     }
   };
 
   const logout = () => {
+    console.log("[AuthContext] Logging out user.");
     localStorage.removeItem("token");
     localStorage.removeItem("userType");
+    localStorage.removeItem("userProfile"); // Clear user profile on logout
+    localStorage.removeItem("isAuthenticated"); // Ensure this is also cleared
     setIsAuthenticated(false);
     setUserProfile(null);
+    setLoading(false);
   };
 
   const resetPassword = async (email: string) => {
-    // For demo purposes, we're just simulating a reset email being sent
-    // In a real app, this would call your API to send a reset email
     return new Promise<void>((resolve) => {
       setTimeout(() => {
-        console.log(`Password reset email sent to: ${email}`);
+        console.log(`[AuthContext] Password reset email simulated for: ${email}`);
         resolve();
       }, 1000);
     });
   };
 
-  // Function to determine where to redirect users based on their role
   const getRedirectPath = () => {
-    if (!userProfile) return "/";
+    if (loading) return "/"; // Stay on current page until loading is complete
+    if (!isAuthenticated) return "/signin";
+    if (!userProfile) return "/"; // Redirect to base if profile is still null after auth
     
     if (userProfile.userType === "TALENT") {
+      // For talent, check if registration is complete
+      if (userProfile.registrationComplete === false) {
+        // If talent registration is not complete, redirect to complete profile page
+        return "/register-talent";
+      }
       return "/talent/dashboard";
     }
     
-    return "/home"; // Redirect regular users to home page
+    return "/home";
   };
 
-  // Function to mark talent registration as complete
   const completeRegistration = () => {
     if (userProfile && userProfile.role === "talent") {
       const updatedProfile = {
@@ -182,6 +189,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
       setUserProfile(updatedProfile);
       localStorage.setItem("userProfile", JSON.stringify(updatedProfile));
+      console.log("[AuthContext] Talent registration marked as complete.");
     }
   };
 

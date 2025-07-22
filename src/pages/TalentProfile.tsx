@@ -31,6 +31,7 @@ import { auth, Profile } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/contexts/AuthContext";
+import { uploadService } from "@/lib/upload-service";
 
 interface UpdateProfilePayload {
   fullName: string;
@@ -63,13 +64,13 @@ const TalentProfile = () => {
       const data = await auth.getProfile();
       setProfile(data);
       setEditableProfile({
-        fullName: data.fullName,
-        email: data.email,
-        phoneNumber: data.phoneNumber,
-        location: data.location,
-        bio: data.bio,
-        serviceAndPricing: data.serviceAndPricing,
-        category: data.category,
+        fullName: data.fullName || '',
+        email: data.email || '',
+        phoneNumber: data.phoneNumber || '',
+        location: data.location || '',
+        bio: data.bio || '',
+        serviceAndPricing: data.serviceAndPricing || '',
+        category: data.category || '',
       });
     } catch (err) {
       console.error("Failed to fetch talent profile:", err);
@@ -128,10 +129,10 @@ const TalentProfile = () => {
         // If there's a new photo, use the updated approach
         // First, upload just the profile picture file
         try {
-          const uploadResult = await auth.uploadProfilePicture(newPhotoFile);
+          const uploadResult = await uploadService.uploadProfilePicture(newPhotoFile);
           // Add the photo URL to the profile data
-          profileUpdateData.photoUrl = uploadResult.photoUrl;
-          console.log('Profile picture uploaded successfully:', uploadResult.photoUrl);
+          profileUpdateData.photoUrl = uploadResult;
+          console.log('Profile picture uploaded successfully:', uploadResult);
         } catch (uploadError) {
           console.error('Failed to upload profile picture:', uploadError);
           toast.error('Failed to upload profile picture, but will continue updating profile info');
@@ -144,13 +145,13 @@ const TalentProfile = () => {
 
       setProfile(updatedProfileData);
       setEditableProfile({
-        fullName: updatedProfileData.fullName,
-        email: updatedProfileData.email,
-        phoneNumber: updatedProfileData.phoneNumber,
-        location: updatedProfileData.location,
-        bio: updatedProfileData.bio,
-        serviceAndPricing: updatedProfileData.serviceAndPricing,
-        category: updatedProfileData.category,
+        fullName: updatedProfileData.fullName || '',
+        email: updatedProfileData.email || '',
+        phoneNumber: updatedProfileData.phoneNumber || '',
+        location: updatedProfileData.location || '',
+        bio: updatedProfileData.bio || '',
+        serviceAndPricing: updatedProfileData.serviceAndPricing || '',
+        category: updatedProfileData.category || '',
       });
 
       // Update the global user profile
@@ -232,8 +233,8 @@ const TalentProfile = () => {
               <CardContent className="pt-6 flex flex-col items-center">
                 <div className="relative mb-4">
                   <Avatar className="h-36 w-36 border-4 border-white shadow-md">
-                    <AvatarImage src={newPhotoPreview || profile.photoUrl || undefined} alt={profile.fullName || "User Avatar"} />
-                    <AvatarFallback>{profile.fullName?.charAt(0).toUpperCase() || 'T'}</AvatarFallback>
+                    <AvatarImage src={newPhotoPreview || profile?.photoUrl || undefined} alt={profile?.fullName || "User Avatar"} />
+                    <AvatarFallback>{profile?.fullName?.charAt(0).toUpperCase() || 'T'}</AvatarFallback>
                   </Avatar>
                 {isEditing && (
                   <>
@@ -256,22 +257,22 @@ const TalentProfile = () => {
                   </>
                 )}
                 </div>
-                <h2 className="text-2xl font-bold text-gray-800">{profile.fullName || 'User Name Unavailable'}</h2>
-                <p className="text-rwanda-green font-medium">{profile.category || 'Talent'}</p>
+                <h2 className="text-2xl font-bold text-gray-800">{profile?.fullName || 'User Name Unavailable'}</h2>
+                <p className="text-rwanda-green font-medium">{profile?.category || 'Talent'}</p>
               </CardContent>
               
               <div className="border-t px-6 py-4 space-y-3">
                 <div className="flex items-start text-sm">
                   <MapPin className="h-5 w-5 text-gray-400 mr-3 mt-0.5 flex-shrink-0" />
-                  <span className="text-gray-700">{profile.location || 'N/A'}</span>
+                  <span className="text-gray-700">{profile?.location || 'N/A'}</span>
                 </div>
                 <div className="flex items-start text-sm">
                   <Phone className="h-5 w-5 text-gray-400 mr-3 mt-0.5 flex-shrink-0" />
-                  <span className="text-gray-700">{profile.phoneNumber || 'N/A'}</span>
+                  <span className="text-gray-700">{profile?.phoneNumber || 'N/A'}</span>
                 </div>
                 <div className="flex items-start text-sm">
                   <Mail className="h-5 w-5 text-gray-400 mr-3 mt-0.5 flex-shrink-0" />
-                  <span className="text-gray-700 break-all">{profile.email || 'No email available'}</span>
+                  <span className="text-gray-700 break-all">{profile?.email || 'No email available'}</span>
                 </div>
               </div>
             </Card>
