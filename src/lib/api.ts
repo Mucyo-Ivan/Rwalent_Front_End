@@ -353,7 +353,7 @@ export const booking = {
     return response.data;
   },
 
-
+  // 8. Get My Pending Bookings (Talent)
   getPendingTalentBookings: async (): Promise<BookingResponse[]> => {
     const response = await api.get('/api/bookings/talent/pending');
     return response.data;
