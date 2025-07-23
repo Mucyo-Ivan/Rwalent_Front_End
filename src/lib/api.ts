@@ -279,6 +279,56 @@ export const auth = {
   }
 };
 
+export const talent = {
+  // Fetch talent by ID using the exact API endpoint provided
+  getTalentById: async (id: string): Promise<Talent | null> => {
+    try {
+      const response = await api.get(`/api/talents/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching talent with ID ${id}:`, error);
+      return null;
+    }
+  },
+  getByCategory: async (category: string): Promise<SearchResponse> => {
+    try {
+      const response = await api.get(`/api/talents/category/${category}`);
+      if (!response.data) {
+        throw new Error('No data received from server');
+      }
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching talents for category ${category}:`, error);
+      throw error;
+    }
+  },
+  getAll: async (): Promise<SearchResponse> => {
+    try {
+      const response = await api.get('/api/talents');
+      if (!response.data) {
+        throw new Error('No data received from server');
+      }
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching all talents:', error);
+      throw error;
+    }
+  },
+  getById: async (talentId: string | number): Promise<Talent | null> => {
+    try {
+      const response = await api.get(`/api/talents/${talentId}`);
+      if (response && response.data) {
+        return response.data;
+      } else {
+        throw new Error('No data returned for this talent.');
+      }
+    } catch (apiError) {
+      console.error(`API error or no data for ID ${talentId}:`, apiError);
+      return null;
+    }
+  }
+};
+
 // --- Booking Related Interfaces and Functions ---
 // ERASED: All booking-related interfaces and the 'booking' export
 
